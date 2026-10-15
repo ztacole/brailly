@@ -28,12 +28,15 @@ android {
         }
         debug {
             ndk {
-                // Hanya arsitektur perangkat uji. Tanpa pembatasan ini keempat
-                // ABI ikut dibundel, dan karena minSdk 26 memakai
-                // extractNativeLibs=false, pustaka nativenya disimpan tanpa
-                // kompresi sehingga ukuran APK berlipat.
-                // Tambahkan "x86_64" bila memakai emulator Intel.
-                abiFilters += listOf("arm64-v8a")
+                // Tanpa pembatasan ini keempat ABI ikut dibundel, dan karena
+                // minSdk 26 memakai extractNativeLibs=false, pustaka nativenya
+                // disimpan tanpa kompresi sehingga ukuran APK berlipat.
+                //
+                // x86_64 wajib disertakan untuk emulator Intel. Bila hanya
+                // arm64-v8a yang tersedia, emulator menjalankannya lewat
+                // terjemahan biner, dan pustaka TFLite yang memakai instruksi
+                // NEON dapat jatuh dengan SIGSEGV saat memeriksa kemampuan CPU.
+                abiFilters += listOf("arm64-v8a", "x86_64")
             }
         }
     }

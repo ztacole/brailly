@@ -101,20 +101,73 @@ class BrailleDetector(
             throw BrailleDetectorException(lastError!!, e)
         }
 
-        val shape = itp.getInputTensor(0).shape()
-        // Model berbentuk NCHW: [batch, kanal, tinggi, lebar].
-        if (shape.size != 4 || shape[1] != 3) {
+        // Bentuk tensor dibaca dari model, tidak diasumsikan. Buffer yang
+        // ukurannya tidak sepadan dengan tensor membuat interpreter gagal di
+        // sisi native, dan kegagalan semacam itu tidak melempar exception yang
+        // bisa ditangkap.
+        try {
+            itp.allocateTensors()
+        } catch (e: Exception) {
             itp.close()
-            lastError = "Bentuk masukan model tidak dikenali: ${shape.joinToString("x")}"
+            lastError = "Model gagal mengalokasikan tensor: ${e.message}"
+            Log.e(TAG, lastError, e)
+            throw BrailleDetectorException(lastError!!, e)
+        }
+
+        val masukan = itp.getInputTensor(0)
+        val keluaran = itp.getOutputTensor(0)
+        val bentukMasukan = masukan.shape()
+        val bentukKeluaran = keluaran.shape()
+
+        // Masukan NCHW [batch, 3, tinggi, lebar]; keluaran [batch, 11, h, w].
+        if (bentukMasukan.size != 4 || bentukMasukan[1] != 3) {
+            itp.close()
+            lastError = "Bentuk masukan model tidak dikenali: ${bentukMasukan.joinToString("x")}"
             Log.e(TAG, lastError!!)
             throw BrailleDetectorException(lastError!!)
         }
-        val tinggi = shape[2]
-        val lebar = shape[3]
-        Log.i(TAG, "Model dimuat: masukan ${lebar}x$tinggi NCHW, $numThreads utas")
+        if (bentukKeluaran.size != 4 || bentukKeluaran[1] != OUTPUT_CHANNELS) {
+            itp.close()
+            lastError = "Bentuk keluaran model tidak dikenali: " +
+                "${bentukKeluaran.joinToString("x")}, diharapkan 11 kanal"
+            Log.e(TAG, lastError!!)
+            throw BrailleDetectorException(lastError!!)
+        }
+
+        val tinggi = bentukMasukan[2]
+        val lebar = bentukMasukan[3]
+        val oTinggi = bentukKeluaran[2]
+        val oLebar = bentukKeluaran[3]
+        val jumlahKeluaran = OUTPUT_CHANNELS * oTinggi * oLebar
+
+        // Model hanya menerima bentuk tetap, jadi ukuran byte harus cocok persis.
+        val byteMasukan = masukan.numBytes()
+        val byteKeluaran = keluaran.numBytes()
+        if (byteMasukan != 4 * 3 * tinggi * lebar || byteKeluaran != 4 * jumlahKeluaran) {
+            itp.close()
+            lastError = "Ukuran tensor model tidak sepadan: masukan $byteMasukan B, " +
+                "keluaran $byteKeluaran B"
+            Log.e(TAG, lastError!!)
+            throw BrailleDetectorException(lastError!!)
+        }
+
+        Log.i(
+            TAG,
+            "Model dimuat: masukan ${lebar}x$tinggi NCHW, " +
+                "keluaran ${oLebar}x$oTinggi x$OUTPUT_CHANNELS, $numThreads utas",
+        )
 
         interpreter = itp
-        val model = LiteRtModel(itp, tinggi, lebar)
+        val model = LiteRtModel(
+            interpreter = itp,
+            inputHeight = tinggi,
+            inputWidth = lebar,
+            outputHeight = oTinggi,
+            outputWidth = oLebar,
+            outputCount = jumlahKeluaran,
+            inputBytes = byteMasukan,
+            outputBytes = byteKeluaran,
+        )
         return BraillePageReader(model, config, translator).also { reader = it }
     }
 
@@ -177,26 +230,25 @@ class BrailleDetector(
         private val interpreter: Interpreter,
         override val inputHeight: Int,
         override val inputWidth: Int,
+        override val outputHeight: Int,
+        override val outputWidth: Int,
+        outputCount: Int,
+        inputBytes: Int,
+        outputBytes: Int,
     ) : BrailleModel {
 
-        private val outputHeight = inputHeight / CellDecoder.STRIDE
-        private val outputWidth = inputWidth / CellDecoder.STRIDE
-        private val outputCount = OUTPUT_CHANNELS * outputHeight * outputWidth
-
+        private val outputCount = outputCount
         private val inputBuffer: ByteBuffer =
-            ByteBuffer.allocateDirect(4 * 3 * inputHeight * inputWidth)
-                .order(ByteOrder.nativeOrder())
+            ByteBuffer.allocateDirect(inputBytes).order(ByteOrder.nativeOrder())
         private val outputBuffer: ByteBuffer =
-            ByteBuffer.allocateDirect(4 * outputCount).order(ByteOrder.nativeOrder())
+            ByteBuffer.allocateDirect(outputBytes).order(ByteOrder.nativeOrder())
 
         override fun run(input: FloatArray): FloatArray {
             require(input.size == 3 * inputHeight * inputWidth) {
                 "ukuran tensor masukan salah: ${input.size}"
             }
             inputBuffer.rewind()
-            val f = inputBuffer.asFloatBuffer()
-            f.rewind()
-            f.put(input)
+            inputBuffer.asFloatBuffer().put(input)
             inputBuffer.rewind()
             outputBuffer.rewind()
 
@@ -206,10 +258,6 @@ class BrailleDetector(
             val keluar = FloatArray(outputCount)
             outputBuffer.asFloatBuffer().get(keluar)
             return keluar
-        }
-
-        private companion object {
-            const val OUTPUT_CHANNELS = 11
         }
     }
 
@@ -222,5 +270,6 @@ class BrailleDetector(
     companion object {
         private const val TAG = "BrailleDetector"
         private const val MODEL_ASSET = "brailly.tflite"
+        private const val OUTPUT_CHANNELS = 11
     }
 }

@@ -17,6 +17,16 @@ interface BrailleModel {
     val inputWidth: Int
 
     /**
+     * Tinggi peta keluaran. Bawaannya seperempat tinggi masukan, tetapi
+     * implementasi sebaiknya membacanya dari model agar tidak mengandalkan
+     * asumsi: ukuran buffer yang salah menyebabkan kegagalan di sisi native.
+     */
+    val outputHeight: Int get() = inputHeight / CellDecoder.STRIDE
+
+    /** Lebar peta keluaran. */
+    val outputWidth: Int get() = inputWidth / CellDecoder.STRIDE
+
+    /**
      * Jalankan model. Masukan berupa tensor NCHW 0..1 sepanjang
      * `3 * inputHeight * inputWidth`; keluaran berupa tensor
      * `11 * (inputHeight/4) * (inputWidth/4)`.
@@ -160,8 +170,8 @@ class BraillePageReader(
         val maps = model.run(siap.tensor)
         return CellDecoder.decode(
             maps = maps,
-            height = model.inputHeight / CellDecoder.STRIDE,
-            width = model.inputWidth / CellDecoder.STRIDE,
+            height = model.outputHeight,
+            width = model.outputWidth,
             scoreThreshold = config.scoreThreshold,
             scale = siap.inverseScale,
         )
