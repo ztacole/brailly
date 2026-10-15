@@ -1,9 +1,6 @@
 package com.brailly.friendly.di
 
 import com.brailly.friendly.core.braille.BrailleTranslator
-import com.brailly.friendly.data.gemma.GemmaClient
-import com.brailly.friendly.data.gemma.GemmaModelDownloader
-import com.brailly.friendly.data.gemma.OnDeviceGemma
 import com.brailly.friendly.data.scan.BrailleDetector
 import com.brailly.friendly.ui.screen.learn.LearnViewModel
 import com.brailly.friendly.ui.screen.scan.ScanViewModel
@@ -38,9 +35,9 @@ val appModule = module {
     }
 
     // Data
-    single { OnDeviceGemma(context = androidContext()) }
-    single { GemmaModelDownloader(context = androidContext(), http = get()) }
-    single { GemmaClient(http = get(), onDevice = get()) }
+    // Catatan: perapian teks dengan Gemma/Gemini tidak lagi dipakai pada alur
+    // scan. Kelas-kelas di paket data.gemma dibiarkan ada namun tidak lagi
+    // didaftarkan, sehingga tidak pernah dibuat.
     single { BrailleDetector(context = androidContext(), translator = get()) }
 
     // ViewModels
