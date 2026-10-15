@@ -2,8 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+        Hanya izin kamera. Pemindaian berjalan sepenuhnya di perangkat memakai
+        brailly.tflite, sehingga izin INTERNET tidak lagi diperlukan setelah
+        perapian teks lewat Gemini API dan pengunduh model Gemma dihapus.
+        Tanpa izin ini, foto dokumen yang dipindai dijamin tidak dapat
+        meninggalkan perangkat -- dan pengguna bisa memverifikasinya sendiri
+        dari daftar izin aplikasi.
+    -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application

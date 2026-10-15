@@ -1,18 +1,8 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
-
-// Baca secrets dari local.properties (tidak di-commit). Nilai dibungkus escape agar
-// aman dimasukkan sebagai string literal Kotlin di BuildConfig.
-val localProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
-}
-fun secret(key: String): String = (localProps.getProperty(key) ?: "").trim()
 
 android {
     namespace = "com.brailly.friendly"
@@ -28,10 +18,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Secrets diinjeksikan dari local.properties ke BuildConfig (tidak di-hardcode).
-        buildConfigField("String", "GEMINI_API_KEY", "\"${secret("GEMINI_API_KEY")}\"")
-        buildConfigField("String", "HF_TOKEN", "\"${secret("HF_TOKEN")}\"")
     }
 
     buildTypes {
@@ -93,13 +79,6 @@ dependencies {
     implementation(libs.koin.compose)
     implementation(libs.koin.compose.viewmodel)
     implementation(libs.koin.compose.navigation3)
-
-    // Ktor
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.okhttp)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
-    implementation(libs.ktor.client.logging)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
