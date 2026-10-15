@@ -7,7 +7,7 @@
         brailly.tflite, sehingga izin INTERNET tidak lagi diperlukan setelah
         perapian teks lewat Gemini API dan pengunduh model Gemma dihapus.
         Tanpa izin ini, foto dokumen yang dipindai dijamin tidak dapat
-        meninggalkan perangkat -- dan pengguna bisa memverifikasinya sendiri
+        meninggalkan perangkat, dan pengguna bisa memverifikasinya sendiri
         dari daftar izin aplikasi.
     -->
     <uses-permission android:name="android.permission.CAMERA" />
