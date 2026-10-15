@@ -40,6 +40,16 @@ android {
                 enable = false
             }
         }
+        debug {
+            ndk {
+                // Hanya arsitektur perangkat uji. Tanpa pembatasan ini keempat
+                // ABI ikut dibundel, dan karena minSdk 26 memakai
+                // extractNativeLibs=false, pustaka nativenya disimpan tanpa
+                // kompresi sehingga ukuran APK berlipat.
+                // Tambahkan "x86_64" bila memakai emulator Intel.
+                abiFilters += listOf("arm64-v8a")
+            }
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -62,9 +72,6 @@ android {
 dependencies {
     // LiteRT
     implementation(libs.litert)
-
-    // MediaPipe GenAI (Gemma on-device)
-    implementation(libs.mediapipe.tasks.genai)
 
     // CameraX
     implementation(libs.androidx.camerax.core)

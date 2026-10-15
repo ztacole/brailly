@@ -11,7 +11,6 @@ kotlin = "2.4.10"
 composeBom = "2026.08.00"
 
 litert = "2.2.0"
-mediapipeGenai = "0.10.27"
 ktor = "3.5.2"
 koinBom = "4.2.2"
 cameraX = "1.6.2"
@@ -41,8 +40,6 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 # LiteRT
 litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert"}
 
-# MediaPipe GenAI (Gemma on-device LLM Inference)
-mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeGenai" }
 
 # Ktor
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
