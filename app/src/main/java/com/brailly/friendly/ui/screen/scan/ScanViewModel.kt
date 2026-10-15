@@ -29,8 +29,12 @@ sealed interface ScanState {
         val lines: List<ScannedLine>,
         val confidence: Float,
         val cellCount: Int,
+        val quality: Float,
     ) : ScanState {
         val isEmpty: Boolean get() = cellCount == 0
+
+        /** Bacaan patut diragukan: biasanya cahaya kurang atau foto kabur. */
+        val isDoubtful: Boolean get() = cellCount > 0 && quality < 0.55f
     }
 
     data class Error(val message: String) : ScanState
@@ -63,6 +67,7 @@ class ScanViewModel(
                     lines = hasil.lines,
                     confidence = hasil.confidence,
                     cellCount = hasil.cellCount,
+                    quality = hasil.quality,
                 )
             } catch (e: BrailleDetectorException) {
                 // Model bermasalah: perlu diberitahukan, bukan disamarkan

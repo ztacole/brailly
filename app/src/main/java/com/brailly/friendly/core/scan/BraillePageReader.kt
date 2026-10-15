@@ -1,5 +1,6 @@
 package com.brailly.friendly.core.scan
 
+import com.brailly.friendly.core.braille.BrailleMap
 import com.brailly.friendly.core.braille.BrailleTranslator
 import kotlin.math.abs
 import kotlin.math.max
@@ -41,12 +42,27 @@ data class ReaderConfig(
      */
     val twoPass: Boolean = true,
     val dehyphenate: Boolean = false,
+    /**
+     * Bila hasil bacaan terlihat tidak wajar, coba juga orientasi 90, 180, dan
+     * 270 derajat lalu ambil yang terbaik. Melindungi dari foto yang terbalik
+     * atau menyamping. Biayanya hanya muncul pada jepretan yang bermasalah.
+     */
+    val autoOrient: Boolean = true,
+    /** Batas kewajaran di bawah mana orientasi lain ikut dicoba. */
+    val minQuality: Float = 0.55f,
 )
 
 /** Hasil pembacaan satu halaman. */
 data class PageReadResult(
     val layout: PageLayout,
     val cells: List<DetectedCell>,
+    /**
+     * Rotasi yang akhirnya dipakai. Koordinat pada [cells] mengacu pada gambar
+     * setelah diputar sebesar nilai ini.
+     */
+    val orientationDegrees: Int = 0,
+    /** Kewajaran hasil, 0..1. Nilai rendah menandakan bacaan patut diragukan. */
+    val quality: Float = 0f,
 ) {
     val text: String get() = layout.text
     val isEmpty: Boolean get() = cells.isEmpty()
@@ -66,8 +82,43 @@ class BraillePageReader(
     private val layoutAnalyzer = LayoutAnalyzer(translator)
 
     fun read(pixels: IntArray, width: Int, height: Int): PageReadResult {
-        val cells = detectCells(pixels, width, height)
-        return PageReadResult(layoutAnalyzer.analyze(cells, config.dehyphenate), cells)
+        var gambar = PixelImage(pixels, width, height)
+        var terbaik = detectCells(gambar.pixels, gambar.width, gambar.height)
+        var mutuTerbaik = quality(terbaik)
+        var rotasiTerbaik = 0
+
+        if (config.autoOrient && mutuTerbaik < config.minQuality) {
+            for (derajat in intArrayOf(90, 180, 270)) {
+                val diputar = PixelRotation.rotate(PixelImage(pixels, width, height), derajat)
+                val sel = detectCells(diputar.pixels, diputar.width, diputar.height)
+                val mutu = quality(sel)
+                if (mutu > mutuTerbaik) {
+                    terbaik = sel
+                    mutuTerbaik = mutu
+                    rotasiTerbaik = derajat
+                    gambar = diputar
+                }
+            }
+        }
+        return PageReadResult(
+            layout = layoutAnalyzer.analyze(terbaik, config.dehyphenate),
+            cells = terbaik,
+            orientationDegrees = rotasiTerbaik,
+            quality = mutuTerbaik,
+        )
+    }
+
+    /**
+     * Kewajaran hasil deteksi: keyakinan rata-rata dikali bagian pola yang
+     * dikenal. Halaman yang terbaca pada orientasi salah tetap menghasilkan
+     * banyak sel, tetapi keyakinannya rendah dan polanya banyak yang asing --
+     * dua gejala yang sama-sama tertangkap ukuran ini.
+     */
+    fun quality(cells: List<DetectedCell>): Float {
+        if (cells.isEmpty()) return 0f
+        val skor = cells.map { it.score }.average().toFloat()
+        val dikenal = cells.count { BrailleMap.isKnown(it.mask) }.toFloat() / cells.size
+        return skor * dikenal
     }
 
     /**

@@ -43,6 +43,10 @@ data class BrailleScanResult(
     val lines: List<ScannedLine> = emptyList(),
     val cellCount: Int = 0,
     val angleDegrees: Float = 0f,
+    /** Rotasi yang dipakai agar halaman terbaca tegak. */
+    val orientationDegrees: Int = 0,
+    /** Kewajaran hasil, 0..1. Rendah berarti bacaan patut diragukan. */
+    val quality: Float = 0f,
 ) {
     val isEmpty: Boolean get() = cellCount == 0
 
@@ -163,6 +167,8 @@ class BrailleDetector(
             lines = layout.lines.map { ScannedLine(it.text, it.braille) },
             cellCount = cells.size,
             angleDegrees = layout.angleDegrees,
+            orientationDegrees = orientationDegrees,
+            quality = quality,
         )
     }
 

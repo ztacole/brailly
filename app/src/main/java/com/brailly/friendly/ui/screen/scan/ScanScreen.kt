@@ -3,6 +3,7 @@ package com.brailly.friendly.ui.screen.scan
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -134,9 +135,16 @@ private fun CameraView(onCaptured: (Bitmap) -> Unit) {
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
+                        // toBitmap() memberi gambar dalam orientasi sensor, bukan
+                        // orientasi layar. Pada ponsel tegak nilainya biasanya 90
+                        // derajat. PreviewView menerapkannya sendiri sehingga
+                        // pratinjau tampak benar, tetapi bitmap hasil jepretan
+                        // tetap miring -- dan sel Braille yang miring membuat
+                        // pola titiknya terbaca salah.
+                        val derajat = image.imageInfo.rotationDegrees
                         val bitmap = image.toBitmap()
                         image.close()
-                        onCaptured(bitmap)
+                        onCaptured(bitmap.diputar(derajat))
                     }
 
                     override fun onError(exception: ImageCaptureException) {
@@ -148,6 +156,18 @@ private fun CameraView(onCaptured: (Bitmap) -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         leadingIcon = BraillyIcons.Camera,
     )
+}
+
+
+/**
+ * Putar bitmap sesuai orientasi sensor kamera. Tanpa ini, sel Braille ikut
+ * miring dan pola titiknya terbaca salah meski posisi selnya tetap ditemukan.
+ */
+private fun Bitmap.diputar(degrees: Int): Bitmap {
+    val d = ((degrees % 360) + 360) % 360
+    if (d == 0) return this
+    val matrix = Matrix().apply { postRotate(d.toFloat()) }
+    return Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
 }
 
 @androidx.compose.ui.tooling.preview.Preview
@@ -167,6 +187,7 @@ private fun ResultPreview() {
                 lines = emptyList(),
                 confidence = 0.93f,
                 cellCount = 86,
+                quality = 0.82f,
             ),
             onScanAgain = {},
         )
@@ -236,6 +257,15 @@ private fun ResultView(result: ScanState.Result, onScanAgain: () -> Unit) {
                             MaterialTheme.typography.bodyLarge
                         },
                         color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                if (result.isDoubtful) {
+                    Text(
+                        "Hasil ini kurang dapat diandalkan. Coba foto ulang dengan cahaya " +
+                            "dari samping agar titik-titiknya membentuk bayangan, dan " +
+                            "pastikan halaman tidak miring.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
                     )
                 }
                 Text(

@@ -125,4 +125,13 @@ object BrailleMap {
         numberPunctuation.entries.associate { (c, cell) -> cell.mask to c }
 
     fun letterFor(cell: BrailleCell): Char? = cellToLetter[cell.dots]
+
+    /**
+     * Apakah [mask] merupakan pola yang dikenal: huruf, tanda baca, atau
+     * penanda. Dipakai menilai kewajaran hasil deteksi -- halaman yang terbaca
+     * pada orientasi salah menghasilkan banyak pola tak dikenal.
+     */
+    fun isKnown(mask: Int): Boolean =
+        maskToLetter.containsKey(mask) || maskToPunctuation.containsKey(mask) ||
+            mask == NUMBER_SIGN.mask || mask == CAPITAL_SIGN.mask || mask == LETTER_SIGN.mask
 }
