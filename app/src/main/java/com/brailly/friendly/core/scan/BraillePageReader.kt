@@ -88,20 +88,36 @@ object ReadingQuality {
     /** Mulai dari jumlah sel ini, bacaan dinilai dengan ambang panjang. */
     const val LONG_READING_CELLS = 10
 
+    /** Di bawah bagian pola dikenal ini, halaman diduga berbahasa lain. */
+    const val OTHER_LANGUAGE_FRACTION = 0.6f
+
     /**
      * Apakah hasil bacaan patut diragukan.
      *
-     * Ambangnya dibedakan menurut banyaknya sel. Ukuran kewajaran bertumpu pada
-     * bagian pola yang dikenal, dan bagian itu nyaris selalu 1,0 pada bacaan
-     * yang hanya berisi beberapa sel -- misalnya tombol lift atau papan nama.
-     * Memakai ambang halaman penuh untuk bacaan sependek itu memunculkan
-     * peringatan pada hasil yang sebenarnya benar.
+     * Dinilai dari keyakinan deteksi semata, BUKAN dari bagian pola yang
+     * dikenal. Halaman Braille berbahasa lain menghasilkan banyak pola di luar
+     * tabel Braille Indonesia, padahal titik-titiknya terbaca sempurna;
+     * mencampurkan keduanya membuat bacaan yang benar ikut diperingatkan.
+     *
+     * Ambangnya dibedakan menurut banyaknya sel, karena bacaan pendek seperti
+     * tombol lift memberi bukti jauh lebih sedikit.
      */
-    fun isDoubtful(cellCount: Int, quality: Float): Boolean = when {
+    fun isDoubtful(cellCount: Int, confidence: Float): Boolean = when {
         cellCount <= 0 -> false
-        cellCount >= LONG_READING_CELLS -> quality < THRESHOLD_LONG
-        else -> quality < THRESHOLD_SHORT
+        cellCount >= LONG_READING_CELLS -> confidence < THRESHOLD_LONG
+        else -> confidence < THRESHOLD_SHORT
     }
+
+    /**
+     * Apakah halaman tampaknya memakai Braille bahasa lain: titik terbaca
+     * yakin, tetapi banyak polanya tidak ada dalam tabel Braille Indonesia.
+     *
+     * Ini keterangan, bukan peringatan. Bacaannya sendiri tetap sahih.
+     */
+    fun isLikelyOtherLanguage(cellCount: Int, confidence: Float, knownFraction: Float): Boolean =
+        cellCount >= LONG_READING_CELLS &&
+            confidence >= THRESHOLD_LONG &&
+            knownFraction < OTHER_LANGUAGE_FRACTION
 }
 
 /** Hasil pembacaan satu halaman. */
@@ -113,14 +129,25 @@ data class PageReadResult(
      * setelah diputar sebesar nilai ini.
      */
     val orientationDegrees: Int = 0,
-    /** Kewajaran hasil, 0..1. Nilai rendah menandakan bacaan patut diragukan. */
+    /**
+     * Kewajaran hasil, 0..1: keyakinan dikali bagian pola yang dikenal.
+     * Dipakai membandingkan orientasi, bukan untuk memperingatkan pengguna.
+     */
     val quality: Float = 0f,
+    /** Keyakinan deteksi rata-rata, 0..1. */
+    val confidence: Float = 0f,
+    /** Bagian sel yang polanya ada dalam tabel Braille Indonesia, 0..1. */
+    val knownFraction: Float = 0f,
 ) {
     val text: String get() = layout.text
     val isEmpty: Boolean get() = cells.isEmpty()
 
     /** Bacaan patut diragukan: biasanya cahaya kurang atau foto kabur. */
-    val isDoubtful: Boolean get() = ReadingQuality.isDoubtful(cells.size, quality)
+    val isDoubtful: Boolean get() = ReadingQuality.isDoubtful(cells.size, confidence)
+
+    /** Halaman tampaknya memakai Braille bahasa lain. */
+    val isLikelyOtherLanguage: Boolean
+        get() = ReadingQuality.isLikelyOtherLanguage(cells.size, confidence, knownFraction)
 }
 
 /**
@@ -163,6 +190,8 @@ class BraillePageReader(
             cells = terbaik,
             orientationDegrees = rotasiTerbaik,
             quality = mutuTerbaik,
+            confidence = confidence(terbaik),
+            knownFraction = knownFraction(terbaik),
         )
     }
 
@@ -172,12 +201,17 @@ class BraillePageReader(
      * banyak sel, tetapi keyakinannya rendah dan polanya banyak yang asing --
      * dua gejala yang sama-sama tertangkap ukuran ini.
      */
-    fun quality(cells: List<DetectedCell>): Float {
-        if (cells.isEmpty()) return 0f
-        val skor = cells.map { it.score }.average().toFloat()
-        val dikenal = cells.count { BrailleMap.isKnown(it.mask) }.toFloat() / cells.size
-        return skor * dikenal
-    }
+    fun quality(cells: List<DetectedCell>): Float =
+        confidence(cells) * knownFraction(cells)
+
+    /** Keyakinan deteksi rata-rata. */
+    fun confidence(cells: List<DetectedCell>): Float =
+        if (cells.isEmpty()) 0f else cells.map { it.score }.average().toFloat()
+
+    /** Bagian sel yang polanya ada dalam tabel Braille Indonesia. */
+    fun knownFraction(cells: List<DetectedCell>): Float =
+        if (cells.isEmpty()) 0f
+        else cells.count { BrailleMap.isKnown(it.mask) }.toFloat() / cells.size
 
     /**
      * Deteksi sel dengan penyesuaian skala otomatis, lalu penyaringan ukuran.

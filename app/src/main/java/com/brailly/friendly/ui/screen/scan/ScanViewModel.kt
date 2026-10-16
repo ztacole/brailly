@@ -31,11 +31,20 @@ sealed interface ScanState {
         val confidence: Float,
         val cellCount: Int,
         val quality: Float,
+        /** Bagian sel yang polanya ada dalam tabel Braille Indonesia. */
+        val knownFraction: Float,
     ) : ScanState {
         val isEmpty: Boolean get() = cellCount == 0
 
         /** Bacaan patut diragukan: biasanya cahaya kurang atau foto kabur. */
-        val isDoubtful: Boolean get() = ReadingQuality.isDoubtful(cellCount, quality)
+        val isDoubtful: Boolean get() = ReadingQuality.isDoubtful(cellCount, confidence)
+
+        /**
+         * Titik terbaca yakin, tetapi banyak polanya di luar tabel Braille
+         * Indonesia. Keterangan, bukan peringatan: bacaannya tetap sahih.
+         */
+        val isLikelyOtherLanguage: Boolean
+            get() = ReadingQuality.isLikelyOtherLanguage(cellCount, confidence, knownFraction)
     }
 
     data class Error(val message: String) : ScanState
@@ -69,6 +78,7 @@ class ScanViewModel(
                     confidence = hasil.confidence,
                     cellCount = hasil.cellCount,
                     quality = hasil.quality,
+                    knownFraction = hasil.knownFraction,
                 )
             } catch (e: BrailleDetectorException) {
                 // Model bermasalah: perlu diberitahukan, bukan disamarkan

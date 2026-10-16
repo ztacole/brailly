@@ -103,4 +103,22 @@ class ShortReadingTest {
         // Tanpa sel sama sekali bukan 'diragukan', melainkan 'tidak ada braille'.
         assertEquals(false, ragu(0, 0f))
     }
+
+    @Test
+    fun halamanBerbahasaLainTidakDiperingatkanSebagaiTidakAndal() {
+        // Kasus nyata: kartu alfabet Braille Rusia terbaca pada keyakinan 0,86,
+        // tetapi banyak polanya di luar tabel Braille Indonesia. Titiknya benar,
+        // jadi ini keterangan bahasa, bukan peringatan keandalan.
+        assertEquals(false, ReadingQuality.isDoubtful(144, 0.86f))
+        assertEquals(true, ReadingQuality.isLikelyOtherLanguage(144, 0.86f, 0.45f))
+
+        // Halaman Indonesia yang terbaca baik: bukan keduanya.
+        assertEquals(false, ReadingQuality.isDoubtful(144, 0.86f))
+        assertEquals(false, ReadingQuality.isLikelyOtherLanguage(144, 0.86f, 0.95f))
+
+        // Keyakinan rendah tetap diperingatkan, dan tidak disebut bahasa lain:
+        // pola asing pada bacaan tak yakin lebih mungkin berarti salah baca.
+        assertEquals(true, ReadingQuality.isDoubtful(144, 0.40f))
+        assertEquals(false, ReadingQuality.isLikelyOtherLanguage(144, 0.40f, 0.45f))
+    }
 }

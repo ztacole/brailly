@@ -188,6 +188,7 @@ private fun ResultPreview() {
                 confidence = 0.93f,
                 cellCount = 86,
                 quality = 0.82f,
+                knownFraction = 0.95f,
             ),
             onScanAgain = {},
         )
@@ -257,6 +258,16 @@ private fun ResultView(result: ScanState.Result, onScanAgain: () -> Unit) {
                             MaterialTheme.typography.bodyLarge
                         },
                         color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                if (result.isLikelyOtherLanguage) {
+                    Text(
+                        "Titik-titiknya terbaca jelas, tetapi banyak polanya tidak ada " +
+                            "dalam tabel Braille Indonesia. Halaman ini kemungkinan " +
+                            "memakai Braille bahasa lain, sehingga sebagian huruf " +
+                            "ditampilkan sebagai simbol Braille apa adanya.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (result.isDoubtful) {
