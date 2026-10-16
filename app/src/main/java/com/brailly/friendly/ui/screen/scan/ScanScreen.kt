@@ -170,30 +170,6 @@ private fun Bitmap.diputar(degrees: Int): Bitmap {
     return Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
 }
 
-@androidx.compose.ui.tooling.preview.Preview
-@Composable
-private fun ResultPreview() {
-    MaterialTheme {
-        ResultView(
-            result = ScanState.Result(
-                text = "Kemerdekaan Indonesia",
-                paragraphs = listOf(
-                    com.brailly.friendly.data.scan.ScannedParagraph("Kemerdekaan Indonesia", true),
-                    com.brailly.friendly.data.scan.ScannedParagraph(
-                        "Pada tanggal 17 Agustus 1945, bangsa Indonesia memproklamasikan kemerdekaan.",
-                        false,
-                    ),
-                ),
-                lines = emptyList(),
-                confidence = 0.93f,
-                cellCount = 86,
-                quality = 0.82f,
-            ),
-            onScanAgain = {},
-        )
-    }
-}
-
 @Composable
 private fun PermissionView(onRequest: () -> Unit) {
     BraillyCard(modifier = Modifier.fillMaxWidth()) {
