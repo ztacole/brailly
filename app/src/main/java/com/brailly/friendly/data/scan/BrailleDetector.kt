@@ -45,8 +45,10 @@ data class BrailleScanResult(
     val angleDegrees: Float = 0f,
     /** Rotasi yang dipakai agar halaman terbaca tegak. */
     val orientationDegrees: Int = 0,
-    /** Kewajaran hasil, 0..1. Rendah berarti bacaan patut diragukan. */
+    /** Kewajaran hasil, 0..1. Dipakai membandingkan orientasi. */
     val quality: Float = 0f,
+    /** Bagian sel yang polanya ada dalam tabel Braille Indonesia, 0..1. */
+    val knownFraction: Float = 0f,
 ) {
     val isEmpty: Boolean get() = cellCount == 0
 
@@ -215,13 +217,14 @@ class BrailleDetector(
         return BrailleScanResult(
             cells = cells.map { it.toBrailleCell() },
             rawText = layout.text,
-            confidence = cells.map { it.score }.average().toFloat(),
+            confidence = confidence,
             paragraphs = layout.paragraphs.map { ScannedParagraph(it.text, it.isHeading) },
             lines = layout.lines.map { ScannedLine(it.text, it.braille) },
             cellCount = cells.size,
             angleDegrees = layout.angleDegrees,
             orientationDegrees = orientationDegrees,
             quality = quality,
+            knownFraction = knownFraction,
         )
     }
 

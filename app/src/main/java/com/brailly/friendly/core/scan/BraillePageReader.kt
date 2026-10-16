@@ -60,7 +60,65 @@ data class ReaderConfig(
     val autoOrient: Boolean = true,
     /** Batas kewajaran di bawah mana orientasi lain ikut dicoba. */
     val minQuality: Float = 0.55f,
+    /**
+     * Jumlah sel minimum sebelum pencarian orientasi diaktifkan.
+     *
+     * Ukuran kewajaran bertumpu pada bagian pola yang dikenal, dan bagian itu
+     * nyaris selalu 1,0 pada bacaan yang hanya berisi beberapa sel -- misalnya
+     * tombol lift atau papan nama. Pada jumlah sedikit, orientasi lain bisa
+     * menang karena kebetulan dan justru memberi huruf yang salah.
+     */
+    val minCellsForOrientation: Int = 10,
 )
+
+/**
+ * Penilaian kelayakan hasil bacaan.
+ *
+ * Dipisahkan dari lapisan UI agar aturannya dapat diuji, dan diletakkan
+ * berdampingan dengan ukuran kewajaran yang dinilainya.
+ */
+object ReadingQuality {
+
+    /** Ambang untuk bacaan panjang; dikalibrasi pada halaman Braille penuh. */
+    const val THRESHOLD_LONG = 0.55f
+
+    /** Ambang untuk bacaan pendek, yang memberi bukti jauh lebih sedikit. */
+    const val THRESHOLD_SHORT = 0.30f
+
+    /** Mulai dari jumlah sel ini, bacaan dinilai dengan ambang panjang. */
+    const val LONG_READING_CELLS = 10
+
+    /** Di bawah bagian pola dikenal ini, halaman diduga berbahasa lain. */
+    const val OTHER_LANGUAGE_FRACTION = 0.6f
+
+    /**
+     * Apakah hasil bacaan patut diragukan.
+     *
+     * Dinilai dari keyakinan deteksi semata, BUKAN dari bagian pola yang
+     * dikenal. Halaman Braille berbahasa lain menghasilkan banyak pola di luar
+     * tabel Braille Indonesia, padahal titik-titiknya terbaca sempurna;
+     * mencampurkan keduanya membuat bacaan yang benar ikut diperingatkan.
+     *
+     * Ambangnya dibedakan menurut banyaknya sel, karena bacaan pendek seperti
+     * tombol lift memberi bukti jauh lebih sedikit.
+     */
+    fun isDoubtful(cellCount: Int, confidence: Float): Boolean = when {
+        cellCount <= 0 -> false
+        cellCount >= LONG_READING_CELLS -> confidence < THRESHOLD_LONG
+        else -> confidence < THRESHOLD_SHORT
+    }
+
+    /**
+     * Apakah halaman tampaknya memakai Braille bahasa lain: titik terbaca
+     * yakin, tetapi banyak polanya tidak ada dalam tabel Braille Indonesia.
+     *
+     * Ini keterangan, bukan peringatan. Bacaannya sendiri tetap sahih.
+     */
+    fun isLikelyOtherLanguage(cellCount: Int, confidence: Float, knownFraction: Float): Boolean =
+        cellCount >= LONG_READING_CELLS &&
+            confidence >= THRESHOLD_LONG &&
+            knownFraction < OTHER_LANGUAGE_FRACTION
+}
 
 /** Hasil pembacaan satu halaman. */
 data class PageReadResult(
@@ -71,11 +129,25 @@ data class PageReadResult(
      * setelah diputar sebesar nilai ini.
      */
     val orientationDegrees: Int = 0,
-    /** Kewajaran hasil, 0..1. Nilai rendah menandakan bacaan patut diragukan. */
+    /**
+     * Kewajaran hasil, 0..1: keyakinan dikali bagian pola yang dikenal.
+     * Dipakai membandingkan orientasi, bukan untuk memperingatkan pengguna.
+     */
     val quality: Float = 0f,
+    /** Keyakinan deteksi rata-rata, 0..1. */
+    val confidence: Float = 0f,
+    /** Bagian sel yang polanya ada dalam tabel Braille Indonesia, 0..1. */
+    val knownFraction: Float = 0f,
 ) {
     val text: String get() = layout.text
     val isEmpty: Boolean get() = cells.isEmpty()
+
+    /** Bacaan patut diragukan: biasanya cahaya kurang atau foto kabur. */
+    val isDoubtful: Boolean get() = ReadingQuality.isDoubtful(cells.size, confidence)
+
+    /** Halaman tampaknya memakai Braille bahasa lain. */
+    val isLikelyOtherLanguage: Boolean
+        get() = ReadingQuality.isLikelyOtherLanguage(cells.size, confidence, knownFraction)
 }
 
 /**
@@ -97,7 +169,10 @@ class BraillePageReader(
         var mutuTerbaik = quality(terbaik)
         var rotasiTerbaik = 0
 
-        if (config.autoOrient && mutuTerbaik < config.minQuality) {
+        if (config.autoOrient &&
+            terbaik.size >= config.minCellsForOrientation &&
+            mutuTerbaik < config.minQuality
+        ) {
             for (derajat in intArrayOf(90, 180, 270)) {
                 val diputar = PixelRotation.rotate(PixelImage(pixels, width, height), derajat)
                 val sel = detectCells(diputar.pixels, diputar.width, diputar.height)
@@ -115,6 +190,8 @@ class BraillePageReader(
             cells = terbaik,
             orientationDegrees = rotasiTerbaik,
             quality = mutuTerbaik,
+            confidence = confidence(terbaik),
+            knownFraction = knownFraction(terbaik),
         )
     }
 
@@ -124,12 +201,17 @@ class BraillePageReader(
      * banyak sel, tetapi keyakinannya rendah dan polanya banyak yang asing --
      * dua gejala yang sama-sama tertangkap ukuran ini.
      */
-    fun quality(cells: List<DetectedCell>): Float {
-        if (cells.isEmpty()) return 0f
-        val skor = cells.map { it.score }.average().toFloat()
-        val dikenal = cells.count { BrailleMap.isKnown(it.mask) }.toFloat() / cells.size
-        return skor * dikenal
-    }
+    fun quality(cells: List<DetectedCell>): Float =
+        confidence(cells) * knownFraction(cells)
+
+    /** Keyakinan deteksi rata-rata. */
+    fun confidence(cells: List<DetectedCell>): Float =
+        if (cells.isEmpty()) 0f else cells.map { it.score }.average().toFloat()
+
+    /** Bagian sel yang polanya ada dalam tabel Braille Indonesia. */
+    fun knownFraction(cells: List<DetectedCell>): Float =
+        if (cells.isEmpty()) 0f
+        else cells.count { BrailleMap.isKnown(it.mask) }.toFloat() / cells.size
 
     /**
      * Deteksi sel dengan penyesuaian skala otomatis, lalu penyaringan ukuran.
