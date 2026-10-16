@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.brailly.friendly.data.scan.BrailleDetector
+import com.brailly.friendly.core.scan.ReadingQuality
 import com.brailly.friendly.data.scan.BrailleDetectorException
 import com.brailly.friendly.data.scan.ScannedLine
 import com.brailly.friendly.data.scan.ScannedParagraph
@@ -34,7 +35,7 @@ sealed interface ScanState {
         val isEmpty: Boolean get() = cellCount == 0
 
         /** Bacaan patut diragukan: biasanya cahaya kurang atau foto kabur. */
-        val isDoubtful: Boolean get() = cellCount > 0 && quality < 0.55f
+        val isDoubtful: Boolean get() = ReadingQuality.isDoubtful(cellCount, quality)
     }
 
     data class Error(val message: String) : ScanState

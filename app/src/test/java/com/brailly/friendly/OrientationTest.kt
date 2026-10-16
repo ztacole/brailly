@@ -93,8 +93,14 @@ class OrientationTest {
         assertEquals(1, model.runCount)
     }
 
-    /** Model tiruan: menaruh satu baris sel dengan mask tetap. */
-    private class HitungModel(private val mask: Int) : BrailleModel {
+    /**
+     * Model tiruan: menaruh satu baris sel dengan mask tetap.
+     *
+     * Jumlahnya dibuat di atas [ReaderConfig.minCellsForOrientation] agar
+     * pencarian orientasi memang diizinkan berjalan; bacaan pendek diuji
+     * terpisah di ShortReadingTest.
+     */
+    private class HitungModel(private val mask: Int, private val count: Int = 12) : BrailleModel {
         override val inputHeight = 256
         override val inputWidth = 192
         var runCount = 0
@@ -112,8 +118,13 @@ class OrientationTest {
                 maps[9 * area + i] = 1.6f
                 maps[10 * area + i] = 2.0f
             }
-            for (k in 0 until 6) {
-                val i = 20 * w + (8 + k * 5)
+            // Peta keluaran hanya 48 kolom, dan sel yang berjarak kurang dari
+            // sekitar 4 satuan tersaring sebagai deteksi ganda. Karena itu sel
+            // disebar enam per baris dengan jarak baris yang cukup lebar.
+            for (k in 0 until count) {
+                val baris = 12 + (k / 6) * 10
+                val kolom = 3 + (k % 6) * 5
+                val i = baris * w + kolom
                 maps[i] = 5f
                 for (d in 0 until 6) {
                     maps[(1 + d) * area + i] = if (mask and (1 shl d) != 0) 6f else -6f

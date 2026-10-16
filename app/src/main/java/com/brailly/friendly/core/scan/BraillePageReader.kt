@@ -60,7 +60,49 @@ data class ReaderConfig(
     val autoOrient: Boolean = true,
     /** Batas kewajaran di bawah mana orientasi lain ikut dicoba. */
     val minQuality: Float = 0.55f,
+    /**
+     * Jumlah sel minimum sebelum pencarian orientasi diaktifkan.
+     *
+     * Ukuran kewajaran bertumpu pada bagian pola yang dikenal, dan bagian itu
+     * nyaris selalu 1,0 pada bacaan yang hanya berisi beberapa sel -- misalnya
+     * tombol lift atau papan nama. Pada jumlah sedikit, orientasi lain bisa
+     * menang karena kebetulan dan justru memberi huruf yang salah.
+     */
+    val minCellsForOrientation: Int = 10,
 )
+
+/**
+ * Penilaian kelayakan hasil bacaan.
+ *
+ * Dipisahkan dari lapisan UI agar aturannya dapat diuji, dan diletakkan
+ * berdampingan dengan ukuran kewajaran yang dinilainya.
+ */
+object ReadingQuality {
+
+    /** Ambang untuk bacaan panjang; dikalibrasi pada halaman Braille penuh. */
+    const val THRESHOLD_LONG = 0.55f
+
+    /** Ambang untuk bacaan pendek, yang memberi bukti jauh lebih sedikit. */
+    const val THRESHOLD_SHORT = 0.30f
+
+    /** Mulai dari jumlah sel ini, bacaan dinilai dengan ambang panjang. */
+    const val LONG_READING_CELLS = 10
+
+    /**
+     * Apakah hasil bacaan patut diragukan.
+     *
+     * Ambangnya dibedakan menurut banyaknya sel. Ukuran kewajaran bertumpu pada
+     * bagian pola yang dikenal, dan bagian itu nyaris selalu 1,0 pada bacaan
+     * yang hanya berisi beberapa sel -- misalnya tombol lift atau papan nama.
+     * Memakai ambang halaman penuh untuk bacaan sependek itu memunculkan
+     * peringatan pada hasil yang sebenarnya benar.
+     */
+    fun isDoubtful(cellCount: Int, quality: Float): Boolean = when {
+        cellCount <= 0 -> false
+        cellCount >= LONG_READING_CELLS -> quality < THRESHOLD_LONG
+        else -> quality < THRESHOLD_SHORT
+    }
+}
 
 /** Hasil pembacaan satu halaman. */
 data class PageReadResult(
@@ -76,6 +118,9 @@ data class PageReadResult(
 ) {
     val text: String get() = layout.text
     val isEmpty: Boolean get() = cells.isEmpty()
+
+    /** Bacaan patut diragukan: biasanya cahaya kurang atau foto kabur. */
+    val isDoubtful: Boolean get() = ReadingQuality.isDoubtful(cells.size, quality)
 }
 
 /**
@@ -97,7 +142,10 @@ class BraillePageReader(
         var mutuTerbaik = quality(terbaik)
         var rotasiTerbaik = 0
 
-        if (config.autoOrient && mutuTerbaik < config.minQuality) {
+        if (config.autoOrient &&
+            terbaik.size >= config.minCellsForOrientation &&
+            mutuTerbaik < config.minQuality
+        ) {
             for (derajat in intArrayOf(90, 180, 270)) {
                 val diputar = PixelRotation.rotate(PixelImage(pixels, width, height), derajat)
                 val sel = detectCells(diputar.pixels, diputar.width, diputar.height)
