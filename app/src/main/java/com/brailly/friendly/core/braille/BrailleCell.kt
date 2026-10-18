@@ -26,9 +26,27 @@ data class BrailleCell(val dots: Set<Int>) {
             return (0x2800 + pattern).toChar()
         }
 
+    /**
+     * Bitmask titik: bit 0 = titik 1, ... bit 5 = titik 6. Konvensi yang sama
+     * dipakai model pemindaian dan blok Unicode Braille.
+     */
+    val mask: Int
+        get() {
+            var m = 0
+            for (dot in dots) if (dot in 1..6) m = m or (1 shl (dot - 1))
+            return m
+        }
+
     companion object {
         val EMPTY = BrailleCell(emptySet())
 
         fun of(vararg dots: Int): BrailleCell = BrailleCell(dots.toSet())
+
+        /** Bentuk sel dari bitmask titik (kebalikan [mask]). */
+        fun ofMask(mask: Int): BrailleCell {
+            val dots = mutableSetOf<Int>()
+            for (bit in 0 until 6) if (mask and (1 shl bit) != 0) dots.add(bit + 1)
+            return BrailleCell(dots)
+        }
     }
 }

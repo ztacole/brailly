@@ -1,8 +1,17 @@
 package com.brailly.friendly.core.braille
 
 /**
- * Peta Braille Grade 1 (uncontracted) untuk huruf Latin a-z, angka, dan
- * tanda baca dasar. Cukup untuk kebutuhan MVP terjemah dua arah.
+ * Peta Braille Grade 1 (tanpa singkatan) untuk huruf Latin a-z, angka, dan
+ * tanda baca, mengikuti profil Braille Indonesia.
+ *
+ * Tanda bacanya mengikuti standar Braille internasional: deret tanda baca
+ * diturunkan dari pola huruf a-j yang digeser satu baris ke bawah, sedangkan
+ * apostrof dan tanda hubung digeser dua posisi.
+ *
+ * Dua pola dipakai ganda dan dibedakan dari posisinya dalam kata:
+ *   - titik 236 : tanda tanya sekaligus kutip buka
+ *   - titik 2356: kurung buka sekaligus kurung tutup
+ * Penguraiannya ditangani [BrailleTranslator].
  */
 object BrailleMap {
 
@@ -50,7 +59,13 @@ object BrailleMap {
         '0' to letters['j']!!,
     )
 
-    /** Tanda baca dasar. */
+    /** Urutan digit menurut huruf: indeks = nilai digit. */
+    const val DIGIT_LETTERS = "jabcdefghi"
+
+    /**
+     * Tanda baca. Untuk arah teks -> braille, kunci dipakai apa adanya.
+     * Untuk arah sebaliknya gunakan [BrailleTranslator] karena ada pola ganda.
+     */
     val punctuation: Map<Char, BrailleCell> = mapOf(
         ',' to BrailleCell.of(2),
         ';' to BrailleCell.of(2, 3),
@@ -60,18 +75,63 @@ object BrailleMap {
         '!' to BrailleCell.of(2, 3, 5),
         '\'' to BrailleCell.of(3),
         '-' to BrailleCell.of(3, 6),
-        '(' to BrailleCell.of(1, 2, 6),
-        ')' to BrailleCell.of(3, 4, 5),
         '/' to BrailleCell.of(3, 4),
+        '*' to BrailleCell.of(3, 5),
+        '(' to BrailleCell.of(2, 3, 5, 6),
+        ')' to BrailleCell.of(2, 3, 5, 6),
+        '\u201C' to BrailleCell.of(2, 3, 6),
+        '\u201D' to BrailleCell.of(3, 5, 6),
+    )
+
+    /**
+     * Tanda baca yang boleh berada di tengah angka dan tidak mengakhiri mode
+     * angka: koma desimal dan titik pemisah ribuan.
+     */
+    val numberPunctuation: Map<Char, BrailleCell> = mapOf(
+        ',' to BrailleCell.of(2),
+        '.' to BrailleCell.of(3),
     )
 
     /** Indikator khusus. */
     val NUMBER_SIGN = BrailleCell.of(3, 4, 5, 6)
     val CAPITAL_SIGN = BrailleCell.of(6)
 
-    /** Peta gabungan cell -> huruf latin (untuk arah Braille -> Text). */
+    /** Tanda huruf: mengakhiri mode angka bila disusul huruf a-j. */
+    val LETTER_SIGN = BrailleCell.of(5, 6)
+
+    /** Pola ganda yang perlu diurai dari konteks. */
+    val QUOTE_OPEN = BrailleCell.of(2, 3, 6)
+    val QUOTE_CLOSE = BrailleCell.of(3, 5, 6)
+    val PAREN = BrailleCell.of(2, 3, 5, 6)
+
+    /** Peta sel -> huruf latin (untuk arah Braille -> Text). */
     val cellToLetter: Map<Set<Int>, Char> =
         letters.entries.associate { (c, cell) -> cell.dots to c }
 
+    /** Peta mask -> huruf latin, varian cepat untuk jalur pemindaian. */
+    val maskToLetter: Map<Int, Char> =
+        letters.entries.associate { (c, cell) -> cell.mask to c }
+
+    /**
+     * Peta mask -> tanda baca. Pola ganda dipetakan ke makna bawaannya
+     * (titik 236 -> '?', titik 2356 -> '('); [BrailleTranslator] yang
+     * membetulkannya menurut posisi.
+     */
+    val maskToPunctuation: Map<Int, Char> = buildMap {
+        for ((ch, cell) in punctuation) putIfAbsent(cell.mask, ch)
+    }
+
+    val maskToNumberPunctuation: Map<Int, Char> =
+        numberPunctuation.entries.associate { (c, cell) -> cell.mask to c }
+
     fun letterFor(cell: BrailleCell): Char? = cellToLetter[cell.dots]
+
+    /**
+     * Apakah [mask] merupakan pola yang dikenal: huruf, tanda baca, atau
+     * penanda. Dipakai menilai kewajaran hasil deteksi -- halaman yang terbaca
+     * pada orientasi salah menghasilkan banyak pola tak dikenal.
+     */
+    fun isKnown(mask: Int): Boolean =
+        maskToLetter.containsKey(mask) || maskToPunctuation.containsKey(mask) ||
+            mask == NUMBER_SIGN.mask || mask == CAPITAL_SIGN.mask || mask == LETTER_SIGN.mask
 }

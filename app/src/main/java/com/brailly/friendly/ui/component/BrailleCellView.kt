@@ -37,7 +37,7 @@ fun BrailleCellView(
     val desc = contentDescription
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+//            .clip(RoundedCornerShape(8.dp))
             .then(if (desc != null) Modifier.semantics { this.contentDescription = desc } else Modifier),
         horizontalArrangement = Arrangement.spacedBy(gap)
     ) {

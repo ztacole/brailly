@@ -2,8 +2,14 @@ package com.brailly.friendly.data.scan
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import com.brailly.friendly.core.braille.BrailleCell
 import com.brailly.friendly.core.braille.BrailleTranslator
+import com.brailly.friendly.core.scan.BrailleModel
+import com.brailly.friendly.core.scan.BraillePageReader
+import com.brailly.friendly.core.scan.CellDecoder
+import com.brailly.friendly.core.scan.PageReadResult
+import com.brailly.friendly.core.scan.ReaderConfig
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -11,136 +17,262 @@ import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
+/** Satu paragraf hasil pemindaian. */
+data class ScannedParagraph(
+    val text: String,
+    val isHeading: Boolean,
+)
+
+/** Satu baris hasil pemindaian, lengkap dengan kode Braille-nya. */
+data class ScannedLine(
+    val text: String,
+    val braille: String,
+)
+
 /**
  * Hasil deteksi braille dari sebuah gambar.
+ *
+ * [rawText] memuat seluruh teks halaman; [paragraphs] dan [lines] menyediakan
+ * strukturnya untuk ditampilkan atau dibacakan.
  */
 data class BrailleScanResult(
     val cells: List<BrailleCell>,
     val rawText: String,
     val confidence: Float,
-)
+    val paragraphs: List<ScannedParagraph> = emptyList(),
+    val lines: List<ScannedLine> = emptyList(),
+    val cellCount: Int = 0,
+    val angleDegrees: Float = 0f,
+    /** Rotasi yang dipakai agar halaman terbaca tegak. */
+    val orientationDegrees: Int = 0,
+    /** Kewajaran hasil, 0..1. Dipakai membandingkan orientasi. */
+    val quality: Float = 0f,
+    /** Bagian sel yang polanya ada dalam tabel Braille Indonesia, 0..1. */
+    val knownFraction: Float = 0f,
+) {
+    val isEmpty: Boolean get() = cellCount == 0
+
+    companion object {
+        val EMPTY = BrailleScanResult(emptyList(), "", 0f)
+    }
+}
+
+/** Gagal memuat atau menjalankan model deteksi. */
+class BrailleDetectorException(message: String, cause: Throwable? = null) :
+    Exception(message, cause)
 
 /**
- * Detektor braille menggunakan model LiteRT (TFLite) `braille_detection.tflite`
- * yang tersimpan di assets.
+ * Detektor braille berbasis model LiteRT (TFLite) `brailly.tflite`.
  *
- * Catatan MVP: model dimuat via Interpreter API. Karena bentuk I/O model dapat
- * bervariasi, [detect] menerapkan pra-pemrosesan gambar standar (resize +
- * normalisasi) dan mengurai output menjadi sel-sel braille. Bila model tidak
- * dapat dimuat/dijalankan, dikembalikan hasil kosong dengan confidence 0 agar
- * pipeline scan tetap aman (tidak crash).
+ * Model mendeteksi pusat setiap sel Braille beserta keenam titiknya, lalu
+ * [BraillePageReader] menyusunnya menjadi baris, spasi, dan paragraf.
+ *
+ * Kelas ini sengaja dibuat tipis: seluruh logika pembacaan berada di paket
+ * `core.scan` yang bebas dependensi Android sehingga dapat diuji lewat unit
+ * test. Di sini hanya ada pemuatan model, konversi [Bitmap], dan pemanggilan
+ * interpreter.
+ *
+ * Masukan model: `[1, 3, 1024, 768]` float32 NCHW, RGB, rentang 0..1.
+ * Normalisasi ImageNet sudah menyatu di dalam graf model, jadi JANGAN
+ * dikurangi mean/std lagi di sini.
  */
 class BrailleDetector(
     context: Context,
     private val translator: BrailleTranslator,
+    private val config: ReaderConfig = ReaderConfig(),
+    private val numThreads: Int = 4,
 ) {
     private val appContext = context.applicationContext
     private var interpreter: Interpreter? = null
+    private var reader: BraillePageReader? = null
 
-    // Ukuran input default; disesuaikan otomatis dari tensor bila tersedia.
-    private var inputWidth = 224
-    private var inputHeight = 224
+    /** Pesan kesalahan terakhir saat memuat model, untuk ditampilkan di UI. */
+    var lastError: String? = null
+        private set
 
-    private fun ensureLoaded(): Interpreter? {
-        interpreter?.let { return it }
-        return try {
-            val model = loadModelFile(MODEL_ASSET)
-            val itp = Interpreter(model, Interpreter.Options().apply { numThreads = 2 })
-            // Sesuaikan dimensi input dari tensor model bila berbentuk NHWC.
-            val shape = itp.getInputTensor(0).shape()
-            if (shape.size == 4) {
-                inputHeight = shape[1].takeIf { it > 0 } ?: inputHeight
-                inputWidth = shape[2].takeIf { it > 0 } ?: inputWidth
-            }
-            interpreter = itp
-            itp
+    private fun ensureReader(): BraillePageReader {
+        reader?.let { return it }
+        val itp = try {
+            Interpreter(
+                loadModelFile(MODEL_ASSET),
+                Interpreter.Options().apply { numThreads = this@BrailleDetector.numThreads },
+            )
         } catch (e: Exception) {
-            null
+            lastError = "Model $MODEL_ASSET gagal dimuat: ${e.message}"
+            Log.e(TAG, lastError, e)
+            throw BrailleDetectorException(lastError!!, e)
         }
+
+        // Bentuk tensor dibaca dari model, tidak diasumsikan. Buffer yang
+        // ukurannya tidak sepadan dengan tensor membuat interpreter gagal di
+        // sisi native, dan kegagalan semacam itu tidak melempar exception yang
+        // bisa ditangkap.
+        try {
+            itp.allocateTensors()
+        } catch (e: Exception) {
+            itp.close()
+            lastError = "Model gagal mengalokasikan tensor: ${e.message}"
+            Log.e(TAG, lastError, e)
+            throw BrailleDetectorException(lastError!!, e)
+        }
+
+        val masukan = itp.getInputTensor(0)
+        val keluaran = itp.getOutputTensor(0)
+        val bentukMasukan = masukan.shape()
+        val bentukKeluaran = keluaran.shape()
+
+        // Masukan NCHW [batch, 3, tinggi, lebar]; keluaran [batch, 11, h, w].
+        if (bentukMasukan.size != 4 || bentukMasukan[1] != 3) {
+            itp.close()
+            lastError = "Bentuk masukan model tidak dikenali: ${bentukMasukan.joinToString("x")}"
+            Log.e(TAG, lastError!!)
+            throw BrailleDetectorException(lastError!!)
+        }
+        if (bentukKeluaran.size != 4 || bentukKeluaran[1] != OUTPUT_CHANNELS) {
+            itp.close()
+            lastError = "Bentuk keluaran model tidak dikenali: " +
+                "${bentukKeluaran.joinToString("x")}, diharapkan 11 kanal"
+            Log.e(TAG, lastError!!)
+            throw BrailleDetectorException(lastError!!)
+        }
+
+        val tinggi = bentukMasukan[2]
+        val lebar = bentukMasukan[3]
+        val oTinggi = bentukKeluaran[2]
+        val oLebar = bentukKeluaran[3]
+        val jumlahKeluaran = OUTPUT_CHANNELS * oTinggi * oLebar
+
+        // Model hanya menerima bentuk tetap, jadi ukuran byte harus cocok persis.
+        val byteMasukan = masukan.numBytes()
+        val byteKeluaran = keluaran.numBytes()
+        if (byteMasukan != 4 * 3 * tinggi * lebar || byteKeluaran != 4 * jumlahKeluaran) {
+            itp.close()
+            lastError = "Ukuran tensor model tidak sepadan: masukan $byteMasukan B, " +
+                "keluaran $byteKeluaran B"
+            Log.e(TAG, lastError!!)
+            throw BrailleDetectorException(lastError!!)
+        }
+
+        Log.i(
+            TAG,
+            "Model dimuat: masukan ${lebar}x$tinggi NCHW, " +
+                "keluaran ${oLebar}x$oTinggi x$OUTPUT_CHANNELS, $numThreads utas",
+        )
+
+        interpreter = itp
+        val model = LiteRtModel(
+            interpreter = itp,
+            inputHeight = tinggi,
+            inputWidth = lebar,
+            outputHeight = oTinggi,
+            outputWidth = oLebar,
+            outputCount = jumlahKeluaran,
+            inputBytes = byteMasukan,
+            outputBytes = byteKeluaran,
+        )
+        return BraillePageReader(model, config, translator).also { reader = it }
     }
 
     private fun loadModelFile(assetName: String): MappedByteBuffer {
-        val fd = appContext.assets.openFd(assetName)
-        FileInputStream(fd.fileDescriptor).use { input ->
-            val channel: FileChannel = input.channel
-            return channel.map(FileChannel.MapMode.READ_ONLY, fd.startOffset, fd.declaredLength)
+        appContext.assets.openFd(assetName).use { fd ->
+            FileInputStream(fd.fileDescriptor).use { input ->
+                val channel: FileChannel = input.channel
+                return channel.map(FileChannel.MapMode.READ_ONLY, fd.startOffset, fd.declaredLength)
+            }
         }
     }
 
     /**
-     * Jalankan deteksi pada [bitmap]. Untuk MVP, output model diinterpretasikan
-     * sebagai skor per titik braille pada grid sel. Bila format tak dikenal,
-     * fungsi mengembalikan hasil kosong (confidence 0) alih-alih melempar error.
+     * Jalankan deteksi pada [bitmap].
+     *
+     * Mengembalikan hasil kosong bila tidak ada Braille yang terdeteksi, dan
+     * melempar [BrailleDetectorException] bila modelnya sendiri bermasalah.
+     * Keduanya dibedakan secara sengaja: "tidak ada Braille" adalah hasil yang
+     * sah, sedangkan model gagal dimuat adalah kesalahan yang perlu diketahui.
      */
     fun detect(bitmap: Bitmap): BrailleScanResult {
-        val itp = ensureLoaded() ?: return BrailleScanResult(emptyList(), "", 0f)
-        return try {
-            val input = preprocess(bitmap)
-            val outputTensor = itp.getOutputTensor(0)
-            val outShape = outputTensor.shape()
-            val outputCount = outShape.fold(1) { acc, i -> acc * i }
-            val output = ByteBuffer.allocateDirect(4 * outputCount).order(ByteOrder.nativeOrder())
-
-            itp.run(input, output)
-            output.rewind()
-
-            val scores = FloatArray(outputCount) { output.float }
-            val cells = decodeCells(scores)
-            val text = translator.brailleToText(cells)
-            BrailleScanResult(cells, text, confidenceOf(scores))
-        } catch (e: Exception) {
-            BrailleScanResult(emptyList(), "", 0f)
-        }
+        val pembaca = ensureReader()
+        val siap = toArgbPixels(bitmap)
+        val hasil = pembaca.read(siap.pixels, siap.width, siap.height)
+        return hasil.toScanResult()
     }
 
-    private fun preprocess(bitmap: Bitmap): ByteBuffer {
-        val resized = Bitmap.createScaledBitmap(bitmap, inputWidth, inputHeight, true)
-        val buffer = ByteBuffer.allocateDirect(4 * inputWidth * inputHeight * 3)
-            .order(ByteOrder.nativeOrder())
-        val pixels = IntArray(inputWidth * inputHeight)
-        resized.getPixels(pixels, 0, inputWidth, 0, 0, inputWidth, inputHeight)
-        for (pixel in pixels) {
-            val r = ((pixel shr 16) and 0xFF) / 255f
-            val g = ((pixel shr 8) and 0xFF) / 255f
-            val b = (pixel and 0xFF) / 255f
-            buffer.putFloat(r); buffer.putFloat(g); buffer.putFloat(b)
+    private class ArgbImage(val pixels: IntArray, val width: Int, val height: Int)
+
+    private fun toArgbPixels(bitmap: Bitmap): ArgbImage {
+        // getPixels selalu mengembalikan ARGB_8888, tetapi bitmap berformat
+        // HARDWARE harus disalin dahulu agar bisa dibaca.
+        val bmp = if (bitmap.config == Bitmap.Config.HARDWARE) {
+            bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
+        } else {
+            bitmap
         }
-        buffer.rewind()
-        return buffer
+        val piksel = IntArray(bmp.width * bmp.height)
+        bmp.getPixels(piksel, 0, bmp.width, 0, 0, bmp.width, bmp.height)
+        return ArgbImage(piksel, bmp.width, bmp.height)
     }
 
-    /**
-     * Ubah skor output menjadi sel braille. Setiap kelipatan 6 skor dipetakan
-     * ke 6 titik sebuah sel (threshold 0.5). Implementasi generik untuk MVP.
-     */
-    private fun decodeCells(scores: FloatArray): List<BrailleCell> {
-        if (scores.size < 6) return emptyList()
-        val cells = mutableListOf<BrailleCell>()
-        var i = 0
-        while (i + 6 <= scores.size) {
-            val dots = mutableSetOf<Int>()
-            for (d in 0 until 6) {
-                if (scores[i + d] >= THRESHOLD) dots.add(d + 1)
+    private fun PageReadResult.toScanResult(): BrailleScanResult {
+        if (cells.isEmpty()) return BrailleScanResult.EMPTY
+        return BrailleScanResult(
+            cells = cells.map { it.toBrailleCell() },
+            rawText = layout.text,
+            confidence = confidence,
+            paragraphs = layout.paragraphs.map { ScannedParagraph(it.text, it.isHeading) },
+            lines = layout.lines.map { ScannedLine(it.text, it.braille) },
+            cellCount = cells.size,
+            angleDegrees = layout.angleDegrees,
+            orientationDegrees = orientationDegrees,
+            quality = quality,
+            knownFraction = knownFraction,
+        )
+    }
+
+    /** Pembungkus interpreter LiteRT sebagai [BrailleModel]. */
+    private class LiteRtModel(
+        private val interpreter: Interpreter,
+        override val inputHeight: Int,
+        override val inputWidth: Int,
+        override val outputHeight: Int,
+        override val outputWidth: Int,
+        outputCount: Int,
+        inputBytes: Int,
+        outputBytes: Int,
+    ) : BrailleModel {
+
+        private val outputCount = outputCount
+        private val inputBuffer: ByteBuffer =
+            ByteBuffer.allocateDirect(inputBytes).order(ByteOrder.nativeOrder())
+        private val outputBuffer: ByteBuffer =
+            ByteBuffer.allocateDirect(outputBytes).order(ByteOrder.nativeOrder())
+
+        override fun run(input: FloatArray): FloatArray {
+            require(input.size == 3 * inputHeight * inputWidth) {
+                "ukuran tensor masukan salah: ${input.size}"
             }
-            if (dots.isNotEmpty()) cells.add(BrailleCell(dots))
-            i += 6
-        }
-        return cells
-    }
+            inputBuffer.rewind()
+            inputBuffer.asFloatBuffer().put(input)
+            inputBuffer.rewind()
+            outputBuffer.rewind()
 
-    private fun confidenceOf(scores: FloatArray): Float {
-        if (scores.isEmpty()) return 0f
-        val strong = scores.count { it >= THRESHOLD }
-        return (strong.toFloat() / scores.size).coerceIn(0f, 1f)
+            interpreter.run(inputBuffer, outputBuffer)
+
+            outputBuffer.rewind()
+            val keluar = FloatArray(outputCount)
+            outputBuffer.asFloatBuffer().get(keluar)
+            return keluar
+        }
     }
 
     fun close() {
         interpreter?.close()
         interpreter = null
+        reader = null
     }
 
     companion object {
-        private const val MODEL_ASSET = "braille_detection.tflite"
-        private const val THRESHOLD = 0.5f
+        private const val TAG = "BrailleDetector"
+        private const val MODEL_ASSET = "brailly.tflite"
+        private const val OUTPUT_CHANNELS = 11
     }
 }

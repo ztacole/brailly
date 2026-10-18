@@ -1,7 +1,9 @@
 [versions]
 agp = "9.3.2"
 coreKtx = "1.19.0"
+coreSplashscreen = "1.2.0"
 junit = "4.13.2"
+json = "20240303"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.11.0"
@@ -10,8 +12,6 @@ kotlin = "2.4.10"
 composeBom = "2026.08.00"
 
 litert = "2.2.0"
-mediapipeGenai = "0.10.27"
-ktor = "3.5.2"
 koinBom = "4.2.2"
 cameraX = "1.6.2"
 nav3Core = "1.1.7"
@@ -22,7 +22,9 @@ kotlinSerialization = "2.4.10"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+json = { group = "org.json", name = "json", version.ref = "json" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -39,15 +41,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 # LiteRT
 litert = { group = "com.google.ai.edge.litert", name = "litert", version.ref = "litert"}
 
-# MediaPipe GenAI (Gemma on-device LLM Inference)
-mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeGenai" }
 
-# Ktor
-ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
-ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
-ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
-ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
-ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 
 # Koin
 koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinBom" }

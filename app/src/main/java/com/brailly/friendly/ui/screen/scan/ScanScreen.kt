@@ -3,6 +3,7 @@ package com.brailly.friendly.ui.screen.scan
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -22,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,9 +72,6 @@ fun ScanScreen(
     ) {
         ScreenHeader(title = "Scan Braille", subtitle = "Arahkan kamera ke teks braille fisik")
 
-        val modelState by viewModel.modelState.collectAsStateWithLifecycle()
-        ModelBanner(state = modelState, onDownload = viewModel::downloadModel)
-
         when (val s = state) {
             is ScanState.Result -> ResultView(s, onScanAgain = viewModel::reset)
             is ScanState.Processing -> ProcessingView()
@@ -88,117 +85,6 @@ fun ScanScreen(
             }
         }
     }
-}
-
-@Composable
-private fun ModelBanner(state: ModelState, onDownload: () -> Unit) {
-    when (state) {
-        // Model siap → tidak perlu banner apa pun.
-        is ModelState.Ready -> Unit
-
-        is ModelState.NotDownloaded -> {
-            BraillyCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Mode offline (Gemma)", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        if (state.canDownload) {
-                            "Unduh model Gemma agar perapian teks bekerja offline. " +
-                                "Tanpa model, aplikasi memakai fallback online bila tersedia."
-                        } else {
-                            "Model offline belum dikonfigurasi. Aplikasi memakai fallback online bila tersedia."
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (state.canDownload) {
-                        PrimaryButton("Unduh Model Offline", onDownload, Modifier.fillMaxWidth())
-                    }
-                }
-            }
-        }
-
-        is ModelState.Downloading -> {
-            BraillyCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Mengunduh model Gemma…", style = MaterialTheme.typography.titleSmall)
-                    val fraction = state.fraction
-                    if (fraction != null) {
-                        LinearProgressIndicator(
-                            progress = { fraction },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text(
-                            "${(fraction * 100).toInt()}% · " +
-                                "${formatBytes(state.bytesDownloaded)} / ${formatBytes(state.totalBytes)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        Text(
-                            "Terunduh ${formatBytes(state.bytesDownloaded)}",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
-
-        is ModelState.Error -> {
-            BraillyCard(
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = MaterialTheme.colorScheme.errorContainer,
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Gagal mengunduh model", style = MaterialTheme.typography.titleSmall)
-                    Text(state.message, style = MaterialTheme.typography.bodyMedium)
-                    PrimaryButton("Coba Lagi", onDownload, Modifier.fillMaxWidth())
-                }
-            }
-        }
-
-        is ModelState.Paused -> {
-            BraillyCard(modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Unduhan dijeda", style = MaterialTheme.typography.titleSmall)
-                    val fraction = state.fraction
-                    if (fraction != null) {
-                        LinearProgressIndicator(
-                            progress = { fraction },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text(
-                            "${(fraction * 100).toInt()}% · " +
-                                "${formatBytes(state.bytesDownloaded)} / ${formatBytes(state.totalBytes)} tersimpan",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        Text(
-                            "${formatBytes(state.bytesDownloaded)} tersimpan. ${state.message}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    PrimaryButton("Lanjutkan Unduhan", onDownload, Modifier.fillMaxWidth())
-                }
-            }
-        }
-    }
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes <= 0) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB")
-    var value = bytes.toDouble()
-    var unit = 0
-    while (value >= 1024 && unit < units.lastIndex) {
-        value /= 1024
-        unit++
-    }
-    return if (unit == 0) "${value.toInt()} ${units[unit]}"
-    else String.format("%.1f %s", value, units[unit])
 }
 
 @Composable
@@ -249,9 +135,16 @@ private fun CameraView(onCaptured: (Bitmap) -> Unit) {
                 ContextCompat.getMainExecutor(context),
                 object : ImageCapture.OnImageCapturedCallback() {
                     override fun onCaptureSuccess(image: ImageProxy) {
+                        // toBitmap() memberi gambar dalam orientasi sensor, bukan
+                        // orientasi layar. Pada ponsel tegak nilainya biasanya 90
+                        // derajat. PreviewView menerapkannya sendiri sehingga
+                        // pratinjau tampak benar, tetapi bitmap hasil jepretan
+                        // tetap miring -- dan sel Braille yang miring membuat
+                        // pola titiknya terbaca salah.
+                        val derajat = image.imageInfo.rotationDegrees
                         val bitmap = image.toBitmap()
                         image.close()
-                        onCaptured(bitmap)
+                        onCaptured(bitmap.diputar(derajat))
                     }
 
                     override fun onError(exception: ImageCaptureException) {
@@ -265,12 +158,16 @@ private fun CameraView(onCaptured: (Bitmap) -> Unit) {
     )
 }
 
-@androidx.compose.ui.tooling.preview.Preview
-@Composable
-private fun CameraPreview() {
-    MaterialTheme {
-        ModelBanner(ModelState.Ready) {  }
-    }
+
+/**
+ * Putar bitmap sesuai orientasi sensor kamera. Tanpa ini, sel Braille ikut
+ * miring dan pola titiknya terbaca salah meski posisi selnya tetap ditemukan.
+ */
+private fun Bitmap.diputar(degrees: Int): Bitmap {
+    val d = ((degrees % 360) + 360) % 360
+    if (d == 0) return this
+    val matrix = Matrix().apply { postRotate(d.toFloat()) }
+    return Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
 }
 
 @Composable
@@ -315,23 +212,45 @@ private fun ProcessingView() {
 
 @Composable
 private fun ResultView(result: ScanState.Result, onScanAgain: () -> Unit) {
-    val shown = result.refinedText?.takeIf { it.isNotBlank() } ?: result.detectedText
     BraillyCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Hasil Scan", style = MaterialTheme.typography.titleMedium)
-            Text(
-                shown.ifBlank { "Tidak ada braille terdeteksi. Coba lagi dengan pencahayaan lebih baik." },
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                buildString {
-                    append("Keyakinan deteksi: ${(result.confidence * 100).toInt()}%")
-                    if (result.usedGemma) append(" · Dirapikan oleh Gemma")
-                },
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (result.isEmpty) {
+                Text(
+                    "Tidak ada braille terdeteksi. Coba lagi dengan cahaya dari samping " +
+                        "agar titik-titiknya membentuk bayangan.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+            } else {
+                // Judul ditampilkan tebal, paragraf dipisah agar mudah dibaca.
+                result.paragraphs.forEach { paragraf ->
+                    Text(
+                        paragraf.text,
+                        style = if (paragraf.isHeading) {
+                            MaterialTheme.typography.titleMedium
+                        } else {
+                            MaterialTheme.typography.bodyLarge
+                        },
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                if (result.isDoubtful) {
+                    Text(
+                        "Hasil ini kurang dapat diandalkan. Coba foto ulang dengan cahaya " +
+                            "dari samping agar titik-titiknya membentuk bayangan, dan " +
+                            "pastikan halaman tidak miring.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Text(
+                    "Keyakinan deteksi: ${(result.confidence * 100).toInt()}% \u00b7 " +
+                        "${result.cellCount} sel \u00b7 ${result.paragraphs.size} paragraf",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
     SecondaryButton("Scan Lagi", onScanAgain, Modifier.fillMaxWidth(), leadingIcon = BraillyIcons.Camera)

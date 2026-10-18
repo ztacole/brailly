@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.brailly.friendly.ui.navigation.BraillyApp
 import com.brailly.friendly.ui.theme.BraillyTheme
 
@@ -19,6 +20,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val systemDark = isSystemInDarkTheme()
             var darkTheme by remember { mutableStateOf(systemDark) }
+
+            val splashScreen = installSplashScreen()
 
             BraillyTheme(darkTheme = darkTheme) {
                 BraillyApp(
