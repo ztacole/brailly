@@ -18,6 +18,10 @@ data object ScanRoute : NavKey
 @Serializable
 data object LearnRoute : NavKey
 
+/** Sub-rute Belajar: jalur kuis bergaya pathway (dibuka dari tombol di kamus). */
+@Serializable
+data object LearnQuizRoute : NavKey
+
 @Serializable
 data object ProfileRoute : NavKey
 

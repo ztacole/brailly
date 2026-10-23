@@ -13,6 +13,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import com.brailly.friendly.ui.screen.home.HomeScreen
 import com.brailly.friendly.ui.screen.learn.LearnScreen
+import com.brailly.friendly.ui.screen.learn.PathwayScreen
 import com.brailly.friendly.ui.screen.profile.ProfileScreen
 import com.brailly.friendly.ui.screen.scan.ScanScreen
 import com.brailly.friendly.ui.screen.translate.TranslateScreen
@@ -54,7 +55,16 @@ fun BraillyApp(
                 }
                 entry<TranslateRoute> { TranslateScreen() }
                 entry<ScanRoute> { ScanScreen() }
-                entry<LearnRoute> { LearnScreen() }
+                entry<LearnRoute> {
+                    LearnScreen(
+                        onOpenQuiz = { backStack.add(LearnQuizRoute) },
+                    )
+                }
+                entry<LearnQuizRoute> {
+                    PathwayScreen(
+                        onBack = { backStack.removeLastOrNull() },
+                    )
+                }
                 entry<ProfileRoute> {
                     ProfileScreen(darkTheme = darkTheme, onToggleTheme = onToggleTheme)
                 }

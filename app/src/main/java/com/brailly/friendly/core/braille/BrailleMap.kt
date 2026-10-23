@@ -124,6 +124,65 @@ object BrailleMap {
     val maskToNumberPunctuation: Map<Int, Char> =
         numberPunctuation.entries.associate { (c, cell) -> cell.mask to c }
 
+    // ------------------------------------------------------------- kamus belajar
+    /**
+     * Satu entri kamus Braille untuk ditampilkan pada menu Belajar: pola sel,
+     * lambang/tulisan, dan deskripsi singkat (dibacakan screen reader).
+     */
+    data class DictionaryEntry(
+        val symbol: String,
+        val cell: BrailleCell,
+        val description: String,
+    )
+
+    /**
+     * Kamus angka 0-9. Dalam penulisan Braille, angka didahului [NUMBER_SIGN],
+     * namun di kamus kita tampilkan sel digit-nya saja agar mudah dikenali.
+     */
+    val numberDictionary: List<DictionaryEntry> =
+        listOf('1', '2', '3', '4', '5', '6', '7', '8', '9', '0').map { d ->
+            DictionaryEntry(
+                symbol = d.toString(),
+                cell = digits.getValue(d),
+                description = "Angka $d (didahului tanda angka)",
+            )
+        }
+
+    /** Nama tanda baca & simbol untuk deskripsi aksesibilitas pada kamus. */
+    private val symbolNames: Map<Char, String> = mapOf(
+        ',' to "koma",
+        ';' to "titik koma",
+        ':' to "titik dua",
+        '.' to "titik",
+        '?' to "tanda tanya",
+        '!' to "tanda seru",
+        '\'' to "apostrof",
+        '-' to "tanda hubung",
+        '/' to "garis miring",
+        '*' to "tanda bintang",
+        '(' to "kurung buka",
+        ')' to "kurung tutup",
+        '\u201C' to "kutip buka",
+        '\u201D' to "kutip tutup",
+    )
+
+    /**
+     * Kamus simbol & tanda baca. Urutannya mengikuti [symbolNames] agar stabil;
+     * pola ganda (mis. kurung) tetap ditampilkan sesuai lambangnya.
+     */
+    val symbolDictionary: List<DictionaryEntry> =
+        symbolNames.mapNotNull { (ch, name) ->
+            val cell = punctuation[ch] ?: return@mapNotNull null
+            DictionaryEntry(symbol = ch.toString(), cell = cell, description = name)
+        }
+
+    /** Kamus khusus penanda (tanda angka, tanda kapital, tanda huruf). */
+    val indicatorDictionary: List<DictionaryEntry> = listOf(
+        DictionaryEntry("#", NUMBER_SIGN, "tanda angka"),
+        DictionaryEntry("^", CAPITAL_SIGN, "tanda kapital"),
+        DictionaryEntry("_", LETTER_SIGN, "tanda huruf"),
+    )
+
     fun letterFor(cell: BrailleCell): Char? = cellToLetter[cell.dots]
 
     /**

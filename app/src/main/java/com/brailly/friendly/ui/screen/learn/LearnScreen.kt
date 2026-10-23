@@ -1,18 +1,18 @@
 package com.brailly.friendly.ui.screen.learn
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -28,12 +28,15 @@ import com.brailly.friendly.ui.component.BrailleCellView
 import com.brailly.friendly.ui.component.BraillyCard
 import com.brailly.friendly.ui.component.BraillyIcons
 import com.brailly.friendly.ui.component.PrimaryButton
-import com.brailly.friendly.ui.theme.SuccessGreen
-import com.brailly.friendly.ui.theme.ErrorRed
 import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * Menu Belajar: menampilkan Kamus Braille lebih dulu, dengan satu tombol di
+ * bagian atas untuk membuka Jalur Kuis (pathway) di layar terpisah.
+ */
 @Composable
 fun LearnScreen(
+    onOpenQuiz: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LearnViewModel = koinViewModel(),
 ) {
@@ -48,7 +51,7 @@ fun LearnScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 20.dp),
     ) {
-        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
                     "Belajar",
@@ -56,115 +59,125 @@ fun LearnScreen(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
 
-                // Kuis harian
-                QuizCard(state, viewModel)
+                // Tombol menuju jalur kuis (pathway) di layar terpisah.
+                QuizEntryCard(state = state, onOpenQuiz = onOpenQuiz)
 
                 Text(
-                    "Panduan Alfabet",
+                    "Kamus Braille",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                OutlinedTextField(
-                    value = state.query,
-                    onValueChange = viewModel::onQueryChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Cari huruf") },
-                    leadingIcon = { Icon(BraillyIcons.Search, contentDescription = null) },
-                    shape = MaterialTheme.shapes.medium,
-                    singleLine = true,
-                )
+
+                // Tab pemilih kamus: Alfabet / Angka / Simbol.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DictionaryTab.entries.forEach { tab ->
+                        FilterChip(
+                            selected = state.tab == tab,
+                            onClick = { viewModel.onTabChange(tab) },
+                            label = { Text(tab.label) },
+                        )
+                    }
+                }
+
+                if (state.tab == DictionaryTab.ALPHABET) {
+                    OutlinedTextField(
+                        value = state.query,
+                        onValueChange = viewModel::onQueryChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Cari huruf") },
+                        leadingIcon = { Icon(BraillyIcons.Search, contentDescription = null) },
+                        shape = MaterialTheme.shapes.medium,
+                        singleLine = true,
+                    )
+                }
             }
         }
 
-        items(state.alphabet) { entry ->
-            BraillyCard {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    BrailleCellView(cell = entry.cell, dotSize = 9.dp, gap = 3.dp)
-                    Text(
-                        entry.letter.uppercase(),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
+        when (state.tab) {
+            DictionaryTab.ALPHABET -> items(state.alphabet) { entry ->
+                DictionaryCell(symbol = entry.letter.uppercase(), cell = entry.cell)
+            }
+
+            DictionaryTab.NUMBER -> items(state.numbers) { entry ->
+                DictionaryCell(symbol = entry.symbol, cell = entry.cell, caption = entry.description)
+            }
+
+            DictionaryTab.SYMBOL -> items(state.symbols) { entry ->
+                DictionaryCell(symbol = entry.symbol, cell = entry.cell, caption = entry.description)
             }
         }
     }
 }
 
 @Composable
-private fun QuizCard(state: LearnUiState, viewModel: LearnViewModel) {
-    val quiz = state.quiz ?: return
+private fun QuizEntryCard(state: LearnUiState, onOpenQuiz: () -> Unit) {
+    val done = state.levels.count { it.completed }
+    val total = state.levels.size
     BraillyCard(
         modifier = Modifier.fillMaxWidth(),
         containerColor = MaterialTheme.colorScheme.primaryContainer,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    "Kuis: Huruf apa ini?",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                Icon(
+                    BraillyIcons.Trophy,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.size(28.dp),
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        BraillyIcons.Trophy,
-                        contentDescription = "Skor",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp),
-                    )
-                    Spacer(Modifier.size(4.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "${state.score}/${state.answered}",
+                        "Jalur Kuis",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold,
                     )
-                }
-            }
-
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                BrailleCellView(cell = quiz.cell, dotSize = 18.dp, gap = 8.dp)
-            }
-
-            if (state.lastCorrect == null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    quiz.options.forEach { option ->
-                        PrimaryButton(
-                            text = option.uppercase(),
-                            onClick = { viewModel.answer(option) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            } else {
-                val correct = state.lastCorrect == true
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (correct) BraillyIcons.Check else BraillyIcons.Close,
-                        contentDescription = null,
-                        tint = if (correct) SuccessGreen else ErrorRed,
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Spacer(Modifier.size(8.dp))
                     Text(
-                        if (correct) "Benar! Itu huruf ${quiz.correct.uppercase()}"
-                        else "Kurang tepat. Jawaban: ${quiz.correct.uppercase()}",
-                        style = MaterialTheme.typography.bodyLarge,
+                        if (total > 0) "$done dari $total level selesai"
+                        else "Mulai belajar braille lewat kuis bertingkat",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
-                PrimaryButton(
-                    text = "Soal Berikutnya",
-                    onClick = viewModel::nextQuestion,
-                    modifier = Modifier.fillMaxWidth(),
+            }
+            PrimaryButton(
+                text = if (done > 0) "Lanjutkan Kuis" else "Mulai Kuis",
+                onClick = onOpenQuiz,
+                leadingIcon = BraillyIcons.Play,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DictionaryCell(
+    symbol: String,
+    cell: com.brailly.friendly.core.braille.BrailleCell,
+    caption: String? = null,
+) {
+    BraillyCard {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            BrailleCellView(cell = cell, dotSize = 9.dp, gap = 3.dp)
+            Text(
+                symbol,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            if (caption != null) {
+                Text(
+                    caption,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

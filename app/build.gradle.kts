@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -58,6 +60,11 @@ android {
     }
 }
 
+room {
+    // Lokasi skema basis data yang diekspor Room (berguna untuk migrasi & review).
+    schemaDirectory("$projectDir/schemas")
+}
+
 dependencies {
     // LiteRT
     implementation(libs.litert)
@@ -75,6 +82,11 @@ dependencies {
 
     // Kotlinx Serialization
     implementation(libs.kotlinx.serialization.core)
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // Koin
     implementation(platform(libs.koin.bom))
