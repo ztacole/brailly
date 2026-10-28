@@ -22,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -131,13 +130,12 @@ fun VideoLessonScreen(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     lesson.title,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = Ds.text.sectionHeader,
                     color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold,
                 )
                 Text(
                     "Materi ${lesson.index + 1} dari ${VideoLessonCatalog.lessons.size}",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = Ds.text.meta,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -219,7 +217,7 @@ private fun GateStatusCard(
 ) {
     val message = when {
         error != null -> errorMessage(error)
-        video.completed -> "Materi selesai. Level pada unit ini sudah terbuka."
+        video.completed -> "Materi sudah tuntas. Level pada unit ini terbuka."
         !playerReady -> "Menyiapkan pemutar. Materi video memerlukan koneksi internet."
         video.durationSeconds <= 0f ->
             "Tekan tombol putar untuk memulai materi."

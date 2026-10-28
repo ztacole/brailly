@@ -75,7 +75,10 @@ fun LearnScreen(
                         FilterChip(
                             selected = state.tab == tab,
                             onClick = { viewModel.onTabChange(tab) },
-                            label = { Text(tab.label) },
+                            // Gaya label disebut eksplisit: `labelLarge` kini
+                            // 17sp Black, dan tiga chip seukuran itu tidak
+                            // muat sebaris pada layar sempit.
+                            label = { Text(tab.label, style = Ds.text.tile) },
                         )
                     }
                 }
@@ -136,7 +139,7 @@ private fun QuizEntryCard(state: LearnUiState, onOpenQuiz: () -> Unit) {
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                     Text(
-                        if (total > 0) "$done dari $total level selesai"
+                        if (total > 0) "$done dari $total level tuntas"
                         else "Mulai belajar braille lewat kuis bertingkat",
                         style = Ds.text.helper,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,

@@ -1,6 +1,6 @@
 # Restyle Guide — Existing Jetpack Compose App, Duolingo-Referenced Design
 
-This file is a **design brief for restyling an app that already exists**. It borrows Duolingo's *visual structure and interaction feel* (chunky 3D "slab" controls, flat canvas, thick borders, curved learning path, gamified HUD, playful feedback). It does **not** borrow Duolingo's brand colors or typefaces: the app keeps its own palette and fonts.
+This file is a **design brief for restyling an app that already exists**. It borrows Duolingo's *visual structure and interaction feel* (chunky 3D "slab" controls, flat canvas, thick borders, curved learning path, gamified HUD, playful feedback). It also borrows Duolingo's **typography** (Feather Bold + DIN Next Rounded Pro) and its **icon set** (Material equivalents of Duolingo's glyphs). It does **not** borrow Duolingo's brand colors: the app keeps its own palette.
 
 ---
 
@@ -9,7 +9,7 @@ This file is a **design brief for restyling an app that already exists**. It bor
 ### 0.1 Do not change the build or its dependencies
 
 - **Do not edit**: `build.gradle` / `build.gradle.kts` (project and module), `settings.gradle*`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper/*`, `proguard-*.pro`, version catalogs, BOMs.
-- **Do not** add, remove, or upgrade any library (no Coil, `material-icons-extended`, Accompanist, font libraries, etc.) (Except Lottie if u need it).
+- **Do not** add, remove, or upgrade any library (no Coil, Lottie, Accompanist, Google Fonts provider, etc.). Font files (`res/font/*.ttf`) and icon files (`res/drawable/*.xml`) are **resources, not dependencies**, so they are allowed. `material-icons-extended` **is** a dependency: use it only if the project **already** has it (§7).
 - **Do not** change `compileSdk`, `minSdk`, `targetSdk`, Kotlin, Compose compiler, or Compose BOM versions.
 - **Do not** add `AndroidManifest.xml` permissions. (Haptics here use Compose's `LocalHapticFeedback`, which needs none.)
 - If a snippet in this guide does not compile with the app's current versions, **adapt the snippet** (see §9). Never bump a version to make it compile.
@@ -19,30 +19,34 @@ This file is a **design brief for restyling an app that already exists**. It bor
 
 - **Preserve**: ViewModels, repositories, use cases, DI setup, navigation graph and routes, state/data models, string resource keys, analytics calls, and tests.
 - **Preserve public composable signatures** wherever possible. Restyle the *internals* of existing components. If a new component is needed, add it beside the old one and swap call sites.
-- **Brand stays**: use the app's existing `MaterialTheme.colorScheme` and typography. No Duolingo hex values, no Duolingo fonts, no Duolingo illustrations or sounds.
+- **Colors stay the app's own**: use the existing `MaterialTheme.colorScheme`. No Duolingo hex values, illustrations, or sounds.
+- **Typography and icons follow Duolingo** (§4.2, §7).
 - New code goes in **new files** under `ui/designsystem/`. Edit existing theme files only if a step below says so (and then minimally).
 
 ---
 
 ## 1. Borrowed vs. Not Borrowed
 
-| Borrowed (apply) | Not borrowed (keep the app's own) |
-|---|---|
-| 3D slab button with a collapsing ledge | Brand colors |
-| Cards and tiles: 2dp border plus a 4dp bottom ledge, no shadow | Typefaces |
-| Flat canvas, generous rounding, playful feedback | Mascot, logo, badges, wordmark |
-| Curved wave-shaped learning path | Sound effects, copywriting |
-| Streak / gems / hearts HUD pattern | Existing navigation structure and routes |
-| Lesson layout: close + progress bar on top, feedback sheet at the bottom | Business logic |
-| Correct/wrong: shake, pop, haptic, confetti | |
-| Bottom bar with a soft tinted pill on the active tab | |
+| Borrowed (apply)                                                              | Not borrowed (keep the app's own) |
+|-------------------------------------------------------------------------------|--|
+| **Typography**: Fredoka Bold (titles, numbers) + Varela Round (all UI)        | Brand colors |
+| **Icons**: flame, gem, heart, crown, trophy, tab icons (Material equivalents) | Mascot, logo, league badges, wordmark artwork |
+| 3D slab button with a collapsing ledge                                        | |
+| Cards and tiles: 2dp border plus a 4dp bottom ledge, no shadow                | Existing navigation structure and routes |
+| Flat canvas, generous rounding, playful feedback                              | Business logic |
+| Curved wave-shaped learning path                                              | |
+| Streak / gems / hearts HUD pattern                                            | |
+| Lesson layout: close + progress bar on top, feedback sheet at the bottom      | |
+| Correct/wrong: shake, pop, haptic, confetti                                   | |
+| Bottom bar with a soft tinted pill on the active tab                          | |
+| Sound effects, copywriting                                                    | |
 
 ---
 
 ## 2. Working Method (follow in order)
 
-1. **Audit the existing theme.** Read the project's `Color.kt`, `Type.kt`, `Theme.kt`. Note which `colorScheme` roles carry the brand, and which font families are used. Do not edit them.
-2. **Add the design-system files** from §4 and §5 under `ui/designsystem/` (`DsTokens.kt`, `DsComponents.kt`). Rename the package to match the project.
+1. **Audit the existing theme.** Read the project's `Color.kt`, `Type.kt`, `Theme.kt`. Note which `colorScheme` roles carry the brand. Do not edit them (the only optional theme edit is §4.3).
+2. **Add the font files** to `res/font/` (§4.2) and, if needed, the icon XMLs to `res/drawable/` (§7). **Add the design-system files** from §4, §5, and §7 under `ui/designsystem/` (`DsTokens.kt`, `DsFonts.kt`, `DsIcons.kt`, `DsComponents.kt`). Rename the package and the `R` import to match the project.
 3. **Inventory the screens.** List every screen and reusable component, and map each to a pattern in §3 and §5.
 4. **Restyle in this order**: buttons → cards/tiles → inputs → HUD / top bar → bottom bar → lists/path → feedback/celebration → dialogs/sheets.
 5. **Swap call sites** to `Ds*` components, or restyle the old component's body, keeping parameters unchanged.
@@ -63,7 +67,7 @@ This file is a **design brief for restyling an app that already exists**. It bor
 | Border | 2dp. Neutral elements use `Ds.colors.neutralBorder`. |
 | Radius | Button 16dp, Card 16dp, Tile/Input 12dp, Pill 50%, Node circle, Dialog / Bottom sheet top corners 24dp. |
 | Spacing | 4dp grid. Screen horizontal padding 16dp. 24dp between sections. 8–12dp inside groups. |
-| Buttons | Label uppercase, heaviest UI weight, 0.4sp letter-spacing, 56dp face height. |
+| Buttons | Label uppercase, DIN Next Rounded **Black**, 0.4sp letter-spacing, 56dp face height. |
 | Text color | `onSurface` for primary, `onSurfaceVariant` for secondary. Never hard-coded black. |
 | Cards (generic) | `DsCard`: surface fill, 2dp neutral border, 4dp neutral ledge, 16dp radius, 16dp padding. |
 | Text fields | 12dp radius, 2dp border (`neutralBorder`), focused border `Ds.colors.selectedBorder`, error border `colorScheme.error`. No filled/underline style. |
@@ -77,9 +81,11 @@ This file is a **design brief for restyling an app that already exists**. It bor
 
 ---
 
-## 4. Design Tokens (new file: `DsTokens.kt`)
+## 4. Design Tokens (new files: `DsTokens.kt`, `DsFonts.kt`)
 
-Everything here is **derived from the app's existing `MaterialTheme`**, so no new palette and no new font is introduced. Only roles that do not exist in Material (success, streak, reward, info, premium) need decisions, and those fall back to the app's own scheme colors until you override them.
+The **colors** here are **derived from the app's existing `MaterialTheme`**, so no new palette is introduced. The **typography** is Duolingo's (§4.2). Only roles that do not exist in Material (success, streak, reward, info, premium) need decisions, and those fall back to the app's own scheme colors until you override them.
+
+### 4.1 Colors (`DsTokens.kt`)
 
 Only color roles available since Material 3 1.0 are used (`primary`, `onPrimary`, `primaryContainer`, `secondary`, `tertiary`, `surface`, `onSurface`, `onSurfaceVariant`, `error`, `errorContainer`, `onError`, `inverseSurface`, `inverseOnSurface`, `background`).
 
@@ -93,10 +99,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 
 /** Darker tone for the 3D ledge. Works with any brand color. */
 fun Color.ledge(fraction: Float = 0.2f): Color = lerp(this, Color.Black, fraction)
@@ -163,15 +165,61 @@ fun dsColors(): DsColors {
     }
 }
 
-// ───────────────────────── Typography ─────────────────────────
-// Hierarchy only (size / weight / spacing). Font families come from the app's own Typography.
+// ───────────────────────── Accessor ─────────────────────────
+// Needs no provider and no edits to the existing theme.
+object Ds {
+    val colors: DsColors @Composable get() = dsColors()
+    val text: DsTextRoles get() = DsDefaultText // Duolingo typography, see DsFonts.kt
+}
+```
+
+### 4.2 Typography: Duolingo (`DsFonts.kt`)
+
+Two families, as in the Duolingo reference:
+
+- **Feather Bold** — the *emotion* voice: titles, hero numbers, HUD numbers, "Duo-said-so" moments.
+- **DIN Next Rounded Pro** — everything else: buttons, tiles, labels, body. The Black weight is the "800" button voice.
+
+Both are proprietary. Put the TTFs in `res/font/` (lowercase, snake_case) and make sure you hold a license for them:
+
+```
+res/font/feather_bold.ttf
+res/font/din_next_rounded_pro_regular.ttf
+res/font/din_next_rounded_pro_medium.ttf
+res/font/din_next_rounded_pro_bold.ttf
+res/font/din_next_rounded_pro_black.ttf
+```
+
+Font files are resources, so no dependency or version changes. If you don't have the files yet, point `Feather` and `DinRounded` at `FontFamily.Default` (a rounded face is the closest substitute); the hierarchy still works.
+
+```kotlin
+package your.app.ui.designsystem
+
+import androidx.compose.runtime.Immutable
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import your.app.R // the app's own R class
+
+// Feather Bold — titles, hero numbers, HUD numbers
+val Feather = FontFamily(Font(R.font.feather_bold, FontWeight.Bold))
+
+// DIN Next Rounded Pro — buttons, tiles, labels, body
+val DinRounded = FontFamily(
+    Font(R.font.din_next_rounded_pro_regular, FontWeight.Normal),
+    Font(R.font.din_next_rounded_pro_medium,  FontWeight.Medium),
+    Font(R.font.din_next_rounded_pro_bold,    FontWeight.Bold),
+    Font(R.font.din_next_rounded_pro_black,   FontWeight.Black),
+)
 
 @Immutable
 class DsTextRoles(
-    val display: TextStyle,
-    val heroNumber: TextStyle,
+    val display: TextStyle,       // wordmark-scale title
+    val heroNumber: TextStyle,    // big XP, streak count
     val screenTitle: TextStyle,
-    val question: TextStyle,
+    val question: TextStyle,      // exercise prompt
     val hudNumber: TextStyle,
     val sectionHeader: TextStyle,
     val skillLabel: TextStyle,
@@ -184,44 +232,68 @@ class DsTextRoles(
     val labelUpper: TextStyle,
 )
 
-fun dsTextRoles(displayFamily: FontFamily?, uiFamily: FontFamily?) = DsTextRoles(
-    display       = TextStyle(fontFamily = displayFamily, fontWeight = FontWeight.Bold,      fontSize = 34.sp, lineHeight = 34.sp, letterSpacing = (-0.5).sp),
-    heroNumber    = TextStyle(fontFamily = displayFamily, fontWeight = FontWeight.Bold,      fontSize = 56.sp, lineHeight = 56.sp, letterSpacing = (-1.0).sp),
-    screenTitle   = TextStyle(fontFamily = displayFamily, fontWeight = FontWeight.Bold,      fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.4).sp),
-    question      = TextStyle(fontFamily = displayFamily, fontWeight = FontWeight.Bold,      fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.2).sp),
-    hudNumber     = TextStyle(fontFamily = displayFamily, fontWeight = FontWeight.Bold,      fontSize = 18.sp, lineHeight = 18.sp, letterSpacing = (-0.1).sp),
-    sectionHeader = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp),
-    skillLabel    = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, lineHeight = 19.sp),
-    button        = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, lineHeight = 17.sp, letterSpacing = 0.4.sp),
-    tile          = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.Bold,      fontSize = 17.sp, lineHeight = 20.sp),
-    body          = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.Normal,    fontSize = 16.sp, lineHeight = 22.sp),
-    helper        = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.Medium,    fontSize = 14.sp, lineHeight = 18.sp),
-    meta          = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.Medium,    fontSize = 13.sp, lineHeight = 16.sp),
-    tab           = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.Bold,      fontSize = 11.sp, lineHeight = 11.sp, letterSpacing = 0.2.sp),
-    labelUpper    = TextStyle(fontFamily = uiFamily,      fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, lineHeight = 14.sp, letterSpacing = 1.0.sp),
+// pt → sp 1:1
+fun dsTextRoles(display: FontFamily, ui: FontFamily) = DsTextRoles(
+    display       = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold,   fontSize = 34.sp, lineHeight = 34.sp, letterSpacing = (-0.5).sp),
+    heroNumber    = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold,   fontSize = 56.sp, lineHeight = 56.sp, letterSpacing = (-1.0).sp),
+    screenTitle   = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold,   fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.4).sp),
+    question      = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold,   fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.2).sp),
+    hudNumber     = TextStyle(fontFamily = display, fontWeight = FontWeight.Bold,   fontSize = 18.sp, lineHeight = 18.sp, letterSpacing = (-0.1).sp),
+    sectionHeader = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Black,  fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp),
+    skillLabel    = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Black,  fontSize = 16.sp, lineHeight = 19.sp),
+    button        = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Black,  fontSize = 17.sp, lineHeight = 17.sp, letterSpacing = 0.4.sp),
+    tile          = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Bold,   fontSize = 17.sp, lineHeight = 20.sp),
+    body          = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
+    helper        = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 18.sp),
+    meta          = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 16.sp),
+    tab           = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Bold,   fontSize = 11.sp, lineHeight = 11.sp, letterSpacing = 0.2.sp),
+    labelUpper    = TextStyle(fontFamily = ui,      fontWeight = FontWeight.Black,  fontSize = 12.sp, lineHeight = 14.sp, letterSpacing = 1.0.sp),
 )
 
-@Composable
-fun dsText(): DsTextRoles {
-    val t = MaterialTheme.typography
-    return remember(t) { dsTextRoles(t.headlineMedium.fontFamily, t.bodyLarge.fontFamily) }
-}
-
-// ───────────────────────── Accessor ─────────────────────────
-// Needs no provider and no edits to the existing theme.
-object Ds {
-    val colors: DsColors @Composable get() = dsColors()
-    val text: DsTextRoles @Composable get() = dsText()
-}
+val DsDefaultText = dsTextRoles(display = Feather, ui = DinRounded)
 ```
 
-If the app has a distinct display font, pass it directly: `dsTextRoles(MyDisplayFont, MyUiFont)` in `dsText()`. Weights are a hierarchy. If a family lacks `ExtraBold`, use the heaviest weight it has.
+| Role | Family | Weight |
+|---|---|---|
+| `display`, `heroNumber`, `screenTitle`, `question`, `hudNumber` | Feather | Bold |
+| `sectionHeader`, `skillLabel`, `button`, `labelUpper` | DIN Next Rounded | Black |
+| `tile`, `tab` | DIN Next Rounded | Bold |
+| `helper`, `meta` | DIN Next Rounded | Medium |
+| `body` | DIN Next Rounded | Regular |
+
+### 4.3 Optional: apply the fonts to stock Material components
+
+`Ds*` components already use `Ds.text`. To make **untouched** Material components (`TextField`, `AlertDialog`, `Snackbar`, `TextButton`, …) pick up the same fonts, add one extension and change **one line** in the existing theme. This is a UI-only edit and touches no dependency.
+
+```kotlin
+// DsFonts.kt (append)
+import androidx.compose.material3.Typography
+
+/** Keeps the app's other slots; swaps the ones Duolingo's hierarchy defines. */
+fun Typography.withDuolingoFonts(): Typography = copy(
+    displayLarge   = DsDefaultText.heroNumber,
+    headlineLarge  = DsDefaultText.screenTitle,
+    headlineMedium = DsDefaultText.question,
+    titleLarge     = DsDefaultText.sectionHeader,
+    titleMedium    = DsDefaultText.skillLabel,
+    bodyLarge      = DsDefaultText.body,
+    bodyMedium     = DsDefaultText.body,
+    labelLarge     = DsDefaultText.button,
+    labelMedium    = DsDefaultText.meta,
+    labelSmall     = DsDefaultText.tab,
+)
+
+// Theme.kt — the only edit:
+// MaterialTheme(colorScheme = …, typography = AppTypography.withDuolingoFonts(), content = content)
+```
+
+This changes text sizes in those slots app-wide, so scan existing screens for overflow after applying it. Skip this step if you only want `Ds*` components restyled.
 
 ---
 
 ## 5. Components (new file: `DsComponents.kt`)
 
-All components use **only** `Ds.colors`, `Ds.text`, and `MaterialTheme.colorScheme`. They take `Painter` for icons, so the project's existing icons or drawables work and no icon library is needed (see §7). Split the file as you like.
+All components use **only** `Ds.colors`, `Ds.text`, and `MaterialTheme.colorScheme`. Icons come from `DsIcons` (§7), and components still accept `Painter`s so any icon source works. Split the file as you like.
 
 ```kotlin
 package your.app.ui.designsystem
@@ -235,8 +307,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -250,7 +320,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -455,7 +524,7 @@ fun DsSkillNode(
     crownCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    crownIcon: Painter? = null, // optional: project's own badge icon
+    crownIcon: Painter = DsIcons.crown(),
 ) {
     val cs = MaterialTheme.colorScheme
     val c = Ds.colors
@@ -478,7 +547,7 @@ fun DsSkillNode(
     val pressed by interaction.collectIsPressedAsState()
     val pressScale by animateFloatAsState(if (pressed) 0.96f else 1f, spring(dampingRatio = 0.7f), label = "node")
     val haptics = LocalHapticFeedback.current
-    val lockPainter = rememberVectorPainter(Icons.Filled.Lock)
+    val lockPainter = DsIcons.locked()
 
     val ring = if (state == DsSkillState.Current) {
         rememberInfiniteTransition(label = "pulse").animateFloat(
@@ -510,7 +579,7 @@ fun DsSkillNode(
                 modifier = Modifier.size(size * 0.4f),
             )
         }
-        if (crownCount > 0 && crownIcon != null && state != DsSkillState.Locked) {
+        if (crownCount > 0 && state != DsSkillState.Locked) {
             Row(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -566,7 +635,7 @@ fun DsLearningPath(
 
 ### 5.6 `DsHudChip` (streak / gems / hearts)
 
-Pass the tint explicitly: `Ds.colors.streak`, `Ds.colors.info`, `MaterialTheme.colorScheme.error`.
+Use the `DsHudKind` overload for the standard three chips, or pass icon and tint explicitly for custom ones.
 
 ```kotlin
 @Composable
@@ -588,9 +657,23 @@ fun DsHudChip(
     }
 }
 
+enum class DsHudKind { Streak, Gems, Hearts }
+
+/** Convenience overload: icon and tint chosen by kind. */
+@Composable
+fun DsHudChip(kind: DsHudKind, value: Int, modifier: Modifier = Modifier) {
+    val c = Ds.colors
+    val (icon, tint) = when (kind) {
+        DsHudKind.Streak -> DsIcons.streak() to c.streak
+        DsHudKind.Gems -> DsIcons.gems() to c.info
+        DsHudKind.Hearts -> DsIcons.hearts() to MaterialTheme.colorScheme.error
+    }
+    DsHudChip(icon, tint, value, kind.name, modifier)
+}
+
 /** Streak with an idle pulse. Disable the pulse when animations are turned off (§8). */
 @Composable
-fun DsStreak(count: Int, icon: Painter, modifier: Modifier = Modifier, animate: Boolean = true) {
+fun DsStreak(count: Int, modifier: Modifier = Modifier, icon: Painter = DsIcons.streak(), animate: Boolean = true) {
     val tint = Ds.colors.streak
     val scale = if (animate) {
         rememberInfiniteTransition(label = "flame").animateFloat(
@@ -610,6 +693,16 @@ Restyles the bottom bar only. **Navigation logic and routes stay in the app**; p
 
 ```kotlin
 data class DsTab(val label: String, val icon: Painter)
+
+/** Duolingo's 5 tabs. Replace the labels with your string resources. */
+@Composable
+fun dsDefaultTabs(): List<DsTab> = listOf(
+    DsTab("Learn", DsIcons.learn()),
+    DsTab("Leaderboard", DsIcons.leaderboard()),
+    DsTab("Quests", DsIcons.quests()),
+    DsTab("Shop", DsIcons.shop()),
+    DsTab("Profile", DsIcons.profile()),
+)
 
 @Composable
 fun DsBottomBar(tabs: List<DsTab>, selectedIndex: Int, onSelect: (Int) -> Unit) {
@@ -736,25 +829,120 @@ Add sound only through the app's **existing** audio mechanism and assets. Do not
 
 ---
 
-## 7. Icons (no new dependency)
+## 7. Icons (`DsIcons.kt`)
 
-`material-icons-extended` is a separate dependency. **Do not add it.**
+Duolingo's functional icons map to Material icons. All components get icons through the single `DsIcons` object, so the source can be swapped in one file.
 
-- **Prefer** icons the app already uses (`painterResource(R.drawable.…)` or whatever it currently has).
-- **Core icons** (always available with `material-icons-core`): `Home`, `Person`, `Favorite`, `Star`, `Check`, `Close`, `Lock`, `ShoppingCart`, `ArrowForward`, `Settings`, `Info`, `Search`, `Notifications`. Wrap with `rememberVectorPainter(Icons.Filled.X)`.
-- **Missing from core** (flame, gem, trophy, crown, scroll/quests): add a small **XML vector drawable** in `res/drawable/` (an asset, not a dependency), or reuse the app's existing icon. Do not use Duolingo's artwork.
+Duolingo's own artwork (wordmark, league badges, the owl mascot) is proprietary: bundle **your own licensed assets** as drawables and load them with `painterResource(R.drawable.…)`. Never substitute a generic icon for them.
 
-| Role | Source |
+| Role | SF Symbol (Duolingo iOS reference) | Material Icon | `DsIcons` |
+|---|---|---|---|
+| Streak flame | `flame.fill` | `LocalFireDepartment` | `streak()` |
+| Gems | `diamond.fill` | `Diamond` | `gems()` |
+| Hearts | `heart.fill` | `Favorite` | `hearts()` |
+| Locked skill | `lock.fill` | `Lock` | `locked()` |
+| Completed skill | `star.fill` / `checkmark` | `Star` / `Check` | `completed()` / `check()` |
+| Speaking exercise | `waveform` | `GraphicEq` | `speaking()` |
+| Listening exercise | `ear.fill` | `Hearing` | `listening()` |
+| Close lesson | `xmark` | `Close` | `close()` |
+| Continue | `arrow.right` | `ArrowForward` | `next()` |
+| Learn tab | `house.fill` | `Home` | `learn()` |
+| Leaderboard tab | `trophy.fill` | `EmojiEvents` | `leaderboard()` |
+| Quests tab | `scroll.fill` | `Description` | `quests()` |
+| Shop tab | `cart.fill` | `ShoppingCart` | `shop()` |
+| Profile tab | `person.fill` | `Person` | `profile()` |
+| Crown (mastery) | `crown.fill` | `WorkspacePremium` | `crown()` |
+| Mascot / league badges | (custom) | **your own asset** | not in `DsIcons` |
+
+> **Dependency warning.** Most of these icons (`LocalFireDepartment`, `Diamond`, `EmojiEvents`, `Description`, `GraphicEq`, `Hearing`, `WorkspacePremium`) live in `material-icons-extended`, which is a **dependency**. Do not add it. Check whether the project already has it:
+> - **Already present** → use **Variant A**.
+> - **Not present** → use **Variant B**. It gives the *same* icons as XML resources, with no dependency change.
+
+### Variant A: project already has `material-icons-extended`
+
+```kotlin
+package your.app.ui.designsystem
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+
+object DsIcons {
+    @Composable fun streak(): Painter = rememberVectorPainter(Icons.Filled.LocalFireDepartment)
+    @Composable fun gems(): Painter = rememberVectorPainter(Icons.Filled.Diamond)
+    @Composable fun hearts(): Painter = rememberVectorPainter(Icons.Filled.Favorite)
+    @Composable fun locked(): Painter = rememberVectorPainter(Icons.Filled.Lock)
+    @Composable fun completed(): Painter = rememberVectorPainter(Icons.Filled.Star)
+    @Composable fun check(): Painter = rememberVectorPainter(Icons.Filled.Check)
+    @Composable fun speaking(): Painter = rememberVectorPainter(Icons.Filled.GraphicEq)
+    @Composable fun listening(): Painter = rememberVectorPainter(Icons.Filled.Hearing)
+    @Composable fun close(): Painter = rememberVectorPainter(Icons.Filled.Close)
+    @Composable fun next(): Painter = rememberVectorPainter(Icons.Filled.ArrowForward)
+    @Composable fun learn(): Painter = rememberVectorPainter(Icons.Filled.Home)
+    @Composable fun leaderboard(): Painter = rememberVectorPainter(Icons.Filled.EmojiEvents)
+    @Composable fun quests(): Painter = rememberVectorPainter(Icons.Filled.Description)
+    @Composable fun shop(): Painter = rememberVectorPainter(Icons.Filled.ShoppingCart)
+    @Composable fun profile(): Painter = rememberVectorPainter(Icons.Filled.Person)
+    @Composable fun crown(): Painter = rememberVectorPainter(Icons.Filled.WorkspacePremium)
+}
+```
+
+On newer Compose versions `Icons.Filled.ArrowForward` may show a deprecation warning in favor of `Icons.AutoMirrored.Filled.ArrowForward`. Keep the one your current version supports. Do not upgrade to silence it. If `WorkspacePremium` is missing in your icons version, use `Star`.
+
+### Variant B: no `material-icons-extended` (XML resources, zero dependency)
+
+Generate each icon once with **Android Studio → right-click `res/drawable` → New → Vector Asset → Clip Art**. Search the Material icon name and use the file name below. This is an IDE tool, not a library.
+
+| File (`res/drawable/`) | Material icon to pick |
 |---|---|
-| Streak | project icon or `res/drawable/ic_streak.xml` |
-| Gems / XP | project icon or `res/drawable/ic_gem.xml` |
-| Hearts | `Icons.Filled.Favorite` |
-| Locked | `Icons.Filled.Lock` (used inside `DsSkillNode`) |
-| Completed | `Icons.Filled.Check` / `Icons.Filled.Star` |
-| Close lesson | `Icons.Filled.Close` |
-| Continue | `Icons.Filled.ArrowForward` |
-| Tabs | the app's existing tab icons |
-| Mascot, badges | the app's own assets |
+| `ic_ds_streak.xml` | local fire department |
+| `ic_ds_gems.xml` | diamond |
+| `ic_ds_hearts.xml` | favorite |
+| `ic_ds_locked.xml` | lock |
+| `ic_ds_completed.xml` | star |
+| `ic_ds_check.xml` | check |
+| `ic_ds_speaking.xml` | graphic eq |
+| `ic_ds_listening.xml` | hearing |
+| `ic_ds_close.xml` | close |
+| `ic_ds_next.xml` | arrow forward |
+| `ic_ds_learn.xml` | home |
+| `ic_ds_leaderboard.xml` | emoji events |
+| `ic_ds_quests.xml` | description |
+| `ic_ds_shop.xml` | shopping cart |
+| `ic_ds_profile.xml` | person |
+| `ic_ds_crown.xml` | workspace premium |
+
+```kotlin
+package your.app.ui.designsystem
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
+import your.app.R // the app's own R class
+
+object DsIcons {
+    @Composable fun streak(): Painter = painterResource(R.drawable.ic_ds_streak)
+    @Composable fun gems(): Painter = painterResource(R.drawable.ic_ds_gems)
+    @Composable fun hearts(): Painter = painterResource(R.drawable.ic_ds_hearts)
+    @Composable fun locked(): Painter = painterResource(R.drawable.ic_ds_locked)
+    @Composable fun completed(): Painter = painterResource(R.drawable.ic_ds_completed)
+    @Composable fun check(): Painter = painterResource(R.drawable.ic_ds_check)
+    @Composable fun speaking(): Painter = painterResource(R.drawable.ic_ds_speaking)
+    @Composable fun listening(): Painter = painterResource(R.drawable.ic_ds_listening)
+    @Composable fun close(): Painter = painterResource(R.drawable.ic_ds_close)
+    @Composable fun next(): Painter = painterResource(R.drawable.ic_ds_next)
+    @Composable fun learn(): Painter = painterResource(R.drawable.ic_ds_learn)
+    @Composable fun leaderboard(): Painter = painterResource(R.drawable.ic_ds_leaderboard)
+    @Composable fun quests(): Painter = painterResource(R.drawable.ic_ds_quests)
+    @Composable fun shop(): Painter = painterResource(R.drawable.ic_ds_shop)
+    @Composable fun profile(): Painter = painterResource(R.drawable.ic_ds_profile)
+    @Composable fun crown(): Painter = painterResource(R.drawable.ic_ds_crown)
+}
+```
+
+Keep the Vector Asset default fill so `Icon(tint = …)` can recolor them.
 
 ---
 
@@ -777,7 +965,8 @@ Add sound only through the app's **existing** audio mechanism and assets. Do not
 | Uses **Material 2** (`androidx.compose.material`) | Replace `MaterialTheme.colorScheme.*` with `MaterialTheme.colors.*` (`primary`, `onPrimary`, `surface`, `onSurface`, `background`, `error`, `onError`). Map `primaryContainer` → `primary.copy(alpha = 0.15f)`, `errorContainer` → `error.copy(alpha = 0.15f)`, `inverseSurface` → `onSurface`, `inverseOnSurface` → `surface`, `onSurfaceVariant` → `onSurface.copy(alpha = 0.6f)`, `secondary` / `tertiary` → `secondary`. Use `BottomNavigation` instead of `NavigationBar`. |
 | Has an older Compose where `animate*AsState(label = …)` or `rememberInfiniteTransition(label = …)` is missing | Remove the `label` argument. |
 | Lacks `HorizontalDivider` | Use `Divider`, or draw a 2dp `Box` with `neutralBorder`. |
-| Lacks `ExtraBold` in its font family | Use the heaviest weight available. |
+| Doesn't have the Duolingo font files | Point `Feather` and `DinRounded` in `DsFonts.kt` at `FontFamily.Default` (or a rounded face already in the app). The hierarchy still works. |
+| Doesn't have `material-icons-extended` | Use `DsIcons` **Variant B** (Vector Asset XML). Never add the dependency. |
 | Has `Modifier.clickable` without `interactionSource` / `indication` named args | Use the positional overload `clickable(interaction, null) { … }`. |
 | Is not on Material 3 for the bottom bar | Wrap the project's existing bottom bar with the same colors and 2dp top divider. |
 
@@ -788,7 +977,8 @@ If something still does not compile, simplify the visual (for example, drop the 
 ## 10. Definition of Done
 
 - [ ] No changes to Gradle files, version catalogs, wrapper, ProGuard, or the manifest (`git diff --stat` is empty for them).
-- [ ] No new libraries, fonts, or permissions.
+- [ ] No new libraries or permissions. Only font TTFs (`res/font`) and icon XMLs (`res/drawable`) were added, as resources.
+- [ ] Typography comes from `Ds.text` (and optionally `withDuolingoFonts()`); icons come from `DsIcons`.
 - [ ] ViewModels, navigation routes, data models, string keys, and tests are untouched, and tests pass.
 - [ ] All new code lives under `ui/designsystem/` plus restyled UI files.
 - [ ] No hex color literals and no `FontFamily` inside screens or components. Everything goes through `MaterialTheme` and `Ds`.

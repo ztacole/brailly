@@ -7,11 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.brailly.friendly.ui.theme.BraillyBlue
 import com.brailly.friendly.ui.theme.BraillyBlueLight
 import com.brailly.friendly.ui.theme.BraillyOrange
@@ -22,8 +18,10 @@ import com.brailly.friendly.ui.theme.SuccessGreen
  * Token desain Brailly: kedalaman "slab" 3D, border tebal, dan kanvas rata.
  *
  * Seluruh warna di sini diturunkan dari `MaterialTheme.colorScheme` dan dari
- * palet yang sudah ada di `ui/theme/Color.kt`. Tidak ada warna atau huruf baru
- * yang diperkenalkan, dan berkas tema yang lama tidak disentuh.
+ * palet yang sudah ada di `ui/theme/Color.kt`. Tidak ada warna baru yang
+ * diperkenalkan, dan berkas warna yang lama tidak disentuh.
+ *
+ * Hierarki tipografinya berada di `DsFonts.kt`.
  */
 
 /** Nada lebih gelap untuk bidang ledge 3D. Berlaku untuk warna apa pun. */
@@ -134,111 +132,16 @@ fun dsColors(): DsColors {
     }
 }
 
-// ───────────────────────── Tipografi ─────────────────────────
-// Hanya hierarki ukuran, bobot, dan spasi. Keluarga hurufnya tetap milik
-// `Type.kt`, yang pada aplikasi ini memakai FontFamily.SansSerif.
-
-@Immutable
-class DsTextRoles(
-    val display: TextStyle,
-    val heroNumber: TextStyle,
-    val screenTitle: TextStyle,
-    val question: TextStyle,
-    val hudNumber: TextStyle,
-    val sectionHeader: TextStyle,
-    val skillLabel: TextStyle,
-    val button: TextStyle,
-    val tile: TextStyle,
-    val body: TextStyle,
-    val helper: TextStyle,
-    val meta: TextStyle,
-    val tab: TextStyle,
-    val labelUpper: TextStyle,
-    /**
-     * Unicode braille (U+2800..U+28FF).
-     *
-     * Satu-satunya peran yang menetapkan keluarga hurufnya sendiri. Monospace
-     * di sini bukan pilihan gaya: huruf berlebar proporsional membuat deretan
-     * sel braille tidak sejajar, sehingga pola titiknya sulit dibandingkan.
-     */
-    val brailleUnicode: TextStyle,
-)
-
-fun dsTextRoles(displayFamily: FontFamily?, uiFamily: FontFamily?) = DsTextRoles(
-    display = TextStyle(
-        fontFamily = displayFamily, fontWeight = FontWeight.Bold,
-        fontSize = 34.sp, lineHeight = 34.sp, letterSpacing = (-0.5).sp,
-    ),
-    heroNumber = TextStyle(
-        fontFamily = displayFamily, fontWeight = FontWeight.Bold,
-        fontSize = 56.sp, lineHeight = 56.sp, letterSpacing = (-1.0).sp,
-    ),
-    screenTitle = TextStyle(
-        fontFamily = displayFamily, fontWeight = FontWeight.Bold,
-        fontSize = 28.sp, lineHeight = 32.sp, letterSpacing = (-0.4).sp,
-    ),
-    question = TextStyle(
-        fontFamily = displayFamily, fontWeight = FontWeight.Bold,
-        fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = (-0.2).sp,
-    ),
-    hudNumber = TextStyle(
-        fontFamily = displayFamily, fontWeight = FontWeight.Bold,
-        fontSize = 18.sp, lineHeight = 18.sp, letterSpacing = (-0.1).sp,
-    ),
-    sectionHeader = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.ExtraBold,
-        fontSize = 20.sp, lineHeight = 24.sp, letterSpacing = (-0.2).sp,
-    ),
-    skillLabel = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.ExtraBold,
-        fontSize = 16.sp, lineHeight = 19.sp,
-    ),
-    button = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.ExtraBold,
-        fontSize = 17.sp, lineHeight = 17.sp, letterSpacing = 0.4.sp,
-    ),
-    tile = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.Bold,
-        fontSize = 17.sp, lineHeight = 20.sp,
-    ),
-    body = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.Normal,
-        fontSize = 16.sp, lineHeight = 22.sp,
-    ),
-    helper = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.Medium,
-        fontSize = 14.sp, lineHeight = 18.sp,
-    ),
-    meta = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.Medium,
-        fontSize = 13.sp, lineHeight = 16.sp,
-    ),
-    tab = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.Bold,
-        fontSize = 11.sp, lineHeight = 11.sp, letterSpacing = 0.2.sp,
-    ),
-    labelUpper = TextStyle(
-        fontFamily = uiFamily, fontWeight = FontWeight.ExtraBold,
-        fontSize = 12.sp, lineHeight = 14.sp, letterSpacing = 1.0.sp,
-    ),
-    brailleUnicode = TextStyle(
-        fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Normal,
-        fontSize = 22.sp, lineHeight = 30.sp, letterSpacing = 2.0.sp,
-    ),
-)
-
-@Composable
-fun dsText(): DsTextRoles {
-    val t = MaterialTheme.typography
-    return remember(t) { dsTextRoles(t.headlineMedium.fontFamily, t.bodyLarge.fontFamily) }
-}
-
 // ───────────────────────── Pengakses ─────────────────────────
-// Tidak butuh provider dan tidak butuh perubahan pada tema yang ada.
 
 object Ds {
     val colors: DsColors @Composable get() = dsColors()
-    val text: DsTextRoles @Composable get() = dsText()
+
+    /**
+     * Peran teks tidak bergantung pada `MaterialTheme`, jadi tidak perlu
+     * berada dalam komposisi. Lihat `DsFonts.kt`.
+     */
+    val text: DsTextRoles get() = DsDefaultText
 }
 
 // ───────────────────────── Ukuran ─────────────────────────

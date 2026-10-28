@@ -124,7 +124,7 @@ fun PathwayScreen(
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    "$done dari ${state.levels.size} level selesai",
+                    "$done dari ${state.levels.size} level tuntas",
                     style = Ds.text.meta,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -133,7 +133,7 @@ fun PathwayScreen(
                 icon = BraillyIcons.Trophy,
                 tint = Ds.colors.reward,
                 value = "$done",
-                contentDescription = "$done level selesai",
+                contentDescription = "$done level tuntas",
             )
         }
 
@@ -210,7 +210,7 @@ private fun VideoPathNode(
         face.readableContent()
     }
     val description = when {
-        step.completed -> "Materi ${step.lesson.title} selesai ditonton"
+        step.completed -> "Materi ${step.lesson.title} sudah tuntas ditonton"
         step.unlocked -> "Tonton materi ${step.lesson.title}"
         else -> "Materi ${step.lesson.title} terkunci"
     }
@@ -220,7 +220,7 @@ private fun VideoPathNode(
         position = position,
         title = step.lesson.title,
         titleHighlighted = step.unlocked,
-        caption = if (step.completed) "Materi selesai" else "Tonton dulu",
+        caption = if (step.completed) "Tuntas" else "Tonton dulu",
         description = description,
     ) {
         DsSlabNode(
@@ -263,7 +263,7 @@ private fun QuizPathNode(
         face.readableContent()
     }
     val description = when {
-        level.completed -> "Level ${level.number} selesai, skor ${level.bestScore}"
+        level.completed -> "Level ${level.number} tuntas, skor ${level.bestScore}"
         level.blockedByVideo -> "Level ${level.number} terkunci, tonton materi videonya dulu"
         !level.unlocked -> "Level ${level.number} terkunci"
         else -> "Mulai level ${level.number}"

@@ -17,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -45,8 +46,10 @@ import com.brailly.friendly.ui.designsystem.DsFeedbackSheet
 import com.brailly.friendly.ui.designsystem.DsHudChip
 import com.brailly.friendly.ui.designsystem.DsProgressBar
 import com.brailly.friendly.ui.designsystem.DsSlabSurface
+import com.brailly.friendly.ui.designsystem.DsSound
 import com.brailly.friendly.ui.designsystem.DsTextField
 import com.brailly.friendly.ui.designsystem.DsTileState
+import com.brailly.friendly.ui.designsystem.LocalDsSounds
 import com.brailly.friendly.ui.designsystem.dsAnimationsEnabled
 import com.brailly.friendly.ui.designsystem.dsTileTextColor
 
@@ -348,7 +351,7 @@ private fun FeedbackSheet(session: QuizSession, onNext: () -> Unit) {
 
     DsFeedbackSheet(
         correct = correct,
-        title = if (correct) "Benar!" else "Kurang tepat",
+        title = if (correct) "Tepat sekali!" else "Belum tepat",
         glyph = if (correct) BraillyIcons.Check else BraillyIcons.Close,
         modifier = Modifier.fillMaxWidth(),
         detail = if (correct) {
@@ -357,7 +360,11 @@ private fun FeedbackSheet(session: QuizSession, onNext: () -> Unit) {
             {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        if (showBrailleAnswer) "Jawaban yang benar:" else "Jawaban: ${q.answerText}",
+                        if (showBrailleAnswer) {
+                            "Yang benar seperti ini:"
+                        } else {
+                            "Jawabannya: ${q.answerText}"
+                        },
                         style = Ds.text.body,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
@@ -381,7 +388,7 @@ private fun FeedbackSheet(session: QuizSession, onNext: () -> Unit) {
         },
     ) {
         DsButton(
-            title = if (isLast) "Lihat Hasil" else "Soal Berikutnya",
+            title = if (isLast) "Lihat Hasil" else "Lanjut",
             onClick = onNext,
             modifier = Modifier.fillMaxWidth(),
             variant = if (correct) DsButtonVariant.Primary else DsButtonVariant.Destructive,
@@ -406,6 +413,14 @@ private fun QuizResult(
     val c = Ds.colors
     val passed = session.score >= LearnViewModel.PASS_THRESHOLD
     val animate = dsAnimationsEnabled()
+    val sounds = LocalDsSounds.current
+
+    // Dibunyikan sekali saat layar hasil muncul, bukan pada setiap penyusunan
+    // ulang. Yang gagal tidak diberi nada: bunyi perayaan untuk hasil yang
+    // belum lulus akan terasa seperti olok-olok.
+    LaunchedEffect(passed) {
+        if (passed) sounds.play(DsSound.Complete)
+    }
 
     val canvas = if (passed) cs.primary else cs.background
     val onCanvas = if (passed) cs.onPrimary else cs.onBackground
@@ -427,7 +442,7 @@ private fun QuizResult(
                 modifier = Modifier.size(96.dp),
             )
             Text(
-                if (passed) "Level Selesai!" else "Coba Lagi",
+                if (passed) "Level Tuntas!" else "Hampir!",
                 style = Ds.text.screenTitle,
                 color = onCanvas,
                 textAlign = TextAlign.Center,
@@ -439,10 +454,10 @@ private fun QuizResult(
             )
             Text(
                 if (passed) {
-                    "Level berikutnya terbuka."
+                    "Level berikutnya sudah terbuka. Lanjutkan selagi hangat."
                 } else {
-                    "Butuh minimal ${LearnViewModel.PASS_THRESHOLD} benar " +
-                        "untuk membuka level berikutnya."
+                    "Kumpulkan minimal ${LearnViewModel.PASS_THRESHOLD} jawaban benar " +
+                        "untuk membuka level berikutnya. Coba sekali lagi."
                 },
                 style = Ds.text.body,
                 color = onCanvas,

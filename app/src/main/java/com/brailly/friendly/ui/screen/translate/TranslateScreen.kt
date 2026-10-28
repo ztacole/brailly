@@ -60,12 +60,20 @@ fun TranslateScreen(
                 selected = state.mode == TranslateMode.TEXT_TO_BRAILLE,
                 onClick = { viewModel.setMode(TranslateMode.TEXT_TO_BRAILLE) },
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-            ) { Text("Teks → Braille") }
+                // Gaya label disebut eksplisit: `labelLarge` kini 17sp Black,
+                // dan "Teks ke Braille" tidak muat di separuh lebar layar.
+                //
+                // Dipakai kata "ke", bukan tanda panah: Fredoka dan Varela
+                // Round hanya mencakup subset latin, sehingga U+2192 akan
+                // dipinjam dari huruf sistem dan terlihat berbeda wajah.
+                label = { Text("Teks ke Braille", style = Ds.text.meta, maxLines = 1) },
+            )
             SegmentedButton(
                 selected = state.mode == TranslateMode.BRAILLE_TO_TEXT,
                 onClick = { viewModel.setMode(TranslateMode.BRAILLE_TO_TEXT) },
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-            ) { Text("Braille → Teks") }
+                label = { Text("Braille ke Teks", style = Ds.text.meta, maxLines = 1) },
+            )
         }
 
         when (state.mode) {

@@ -10,6 +10,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import com.brailly.friendly.ui.designsystem.withDuolingoFonts
 
 private val DarkColorScheme = darkColorScheme(
     primary = BraillyBlueLight,
@@ -68,7 +69,10 @@ fun BraillyTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        // Hierarki tipografi design system ikut diterapkan ke komponen Material
+        // yang tidak di-restyle, misalnya AlertDialog dan FilterChip, supaya
+        // tidak ada dua suara huruf yang bercampur di satu layar.
+        typography = Typography.withDuolingoFonts(),
         shapes = BraillyShapes,
         content = content
     )

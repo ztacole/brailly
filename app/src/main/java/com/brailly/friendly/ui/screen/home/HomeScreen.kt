@@ -179,7 +179,7 @@ private fun StreakCard() {
                     color = streak.readableContent(),
                 )
                 Text(
-                    "Lanjutkan belajar hari ini untuk menjaga streak-mu",
+                    "Lanjutkan belajar hari ini supaya streak-mu tidak putus",
                     style = Ds.text.helper,
                     color = streak.readableContent(),
                 )

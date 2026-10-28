@@ -33,6 +33,7 @@ import com.brailly.friendly.ui.component.ScreenHeader
 import com.brailly.friendly.ui.component.SecondaryButton
 import com.brailly.friendly.ui.designsystem.Ds
 import com.brailly.friendly.ui.designsystem.DsDim
+import com.brailly.friendly.ui.designsystem.LocalDsSounds
 import org.koin.compose.koinInject
 
 @Composable
@@ -107,6 +108,7 @@ fun ProfileScreen(
         }
 
         SpeechRateSetting()
+        SoundEffectsSetting()
         // "Ukuran Teks" masih placeholder MVP: belum ada yang membacanya.
         SettingItem(BraillyIcons.Edit, "Ukuran Teks", "Normal")
 
@@ -180,7 +182,11 @@ private fun SpeechRateSetting() {
                             index = index,
                             count = SpeechRate.entries.size,
                         ),
-                    ) { Text(rate.label) }
+                        // Gaya label disebut eksplisit: `labelLarge` kini 17sp
+                        // Black, dan tiga pilihan seukuran itu tidak muat
+                        // sebaris.
+                        label = { Text(rate.label, style = Ds.text.meta, maxLines = 1) },
+                    )
                 }
             }
 
@@ -202,6 +208,55 @@ private fun SpeechRateSetting() {
 
 /** Penanda contoh suara, dipisahkan dari bacaan hasil scan maupun riwayat. */
 private const val SPEECH_RATE_PREVIEW_ID = "profile-speech-rate-preview"
+
+/**
+ * Sakelar tanda suara untuk jawaban benar, jawaban keliru, dan level tuntas.
+ *
+ * Keterangannya menyebut bahwa mode senyap ponsel tetap berlaku, supaya
+ * pengguna tidak menyangka fiturnya rusak ketika sakelarnya menyala tetapi
+ * tidak ada bunyi yang keluar.
+ */
+@Composable
+private fun SoundEffectsSetting() {
+    val sounds = LocalDsSounds.current
+    BraillyCard(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    BraillyIcons.Speaker,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.size(12.dp))
+                Column {
+                    Text(
+                        "Efek Suara",
+                        style = Ds.text.skillLabel,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        if (sounds.enabled) {
+                            "Aktif, kecuali saat ponsel disenyapkan"
+                        } else {
+                            "Nonaktif"
+                        },
+                        style = Ds.text.helper,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Switch(
+                checked = sounds.enabled,
+                onCheckedChange = { sounds.setEnabled(it) },
+            )
+        }
+    }
+}
 
 @Composable
 private fun StatCard(modifier: Modifier, icon: ImageVector, value: String, label: String) {

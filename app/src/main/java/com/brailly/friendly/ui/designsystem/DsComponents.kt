@@ -105,6 +105,7 @@ fun DsButton(
         label = "slab",
     )
     val haptics = LocalHapticFeedback.current
+    val sounds = LocalDsSounds.current
     val shape = RoundedCornerShape(DsDim.radiusButton)
 
     Box(
@@ -143,6 +144,7 @@ fun DsButton(
                     indication = null,
                 ) {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    sounds.play(DsSound.Press)
                     onClick()
                 }
                 .padding(horizontal = 16.dp),
@@ -190,6 +192,7 @@ fun DsIconButton(
         label = "iconSlab",
     )
     val haptics = LocalHapticFeedback.current
+    val sounds = LocalDsSounds.current
     val shape = RoundedCornerShape(DsDim.radiusTile)
     val resolvedLedge = when {
         !enabled -> c.neutralLedge
@@ -226,6 +229,7 @@ fun DsIconButton(
                     indication = null,
                 ) {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    sounds.play(DsSound.Press)
                     onClick()
                 },
             contentAlignment = Alignment.Center,
@@ -361,14 +365,19 @@ fun DsAnswerTile(
 
     val shake = remember { Animatable(0f) }
     val haptics = LocalHapticFeedback.current
+    val sounds = LocalDsSounds.current
     LaunchedEffect(state) {
         when (state) {
             DsTileState.Wrong -> {
                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                sounds.play(DsSound.Wrong)
                 repeat(4) { shake.animateTo(if (it % 2 == 0) 6f else -6f, tween(50)) }
                 shake.animateTo(0f, tween(50))
             }
-            DsTileState.Correct -> haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            DsTileState.Correct -> {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                sounds.play(DsSound.Correct)
+            }
             else -> Unit
         }
     }
@@ -436,6 +445,7 @@ fun DsSlabNode(
         label = "node",
     )
     val haptics = LocalHapticFeedback.current
+    val sounds = LocalDsSounds.current
 
     val ring = if (state == DsNodeState.Current && animate) {
         rememberInfiniteTransition(label = "pulse").animateFloat(
@@ -478,6 +488,7 @@ fun DsSlabNode(
                     if (enabled) {
                         Modifier.clickable(interactionSource = interaction, indication = null) {
                             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            sounds.play(DsSound.Press)
                             onClick()
                         }
                     } else {

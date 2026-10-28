@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.brailly.friendly.data.speech.TextToSpeechManager
+import com.brailly.friendly.ui.designsystem.DsSoundHost
 import com.brailly.friendly.ui.navigation.BraillyApp
 import com.brailly.friendly.ui.theme.BraillyTheme
 import org.koin.android.ext.android.inject
@@ -33,10 +34,14 @@ class MainActivity : ComponentActivity() {
             val splashScreen = installSplashScreen()
 
             BraillyTheme(darkTheme = darkTheme) {
-                BraillyApp(
-                    darkTheme = darkTheme,
-                    onToggleTheme = { darkTheme = it },
-                )
+                // Tanda suara disediakan sekali untuk seluruh aplikasi; jalur
+                // audionya dilepas bersama pohon komposisi ini.
+                DsSoundHost {
+                    BraillyApp(
+                        darkTheme = darkTheme,
+                        onToggleTheme = { darkTheme = it },
+                    )
+                }
             }
         }
     }

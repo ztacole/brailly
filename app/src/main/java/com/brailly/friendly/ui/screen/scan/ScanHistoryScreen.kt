@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,8 +99,8 @@ fun ScanHistoryScreen(
                 item(key = "empty") {
                     HistoryMessageCard(
                         title = "Belum ada riwayat",
-                        body = "Hasil pemindaian akan tersimpan di sini secara otomatis, " +
-                            "sehingga bisa dibaca ulang tanpa memindai lagi.",
+                        body = "Setiap hasil pemindaian tersimpan di sini secara otomatis, " +
+                            "jadi bisa dibaca ulang kapan saja tanpa memindai lagi.",
                     )
                 }
             }
@@ -183,13 +182,12 @@ private fun HistoryHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 "Riwayat Scan",
-                style = MaterialTheme.typography.headlineSmall,
+                style = Ds.text.sectionHeader,
                 color = MaterialTheme.colorScheme.onBackground,
-                fontWeight = FontWeight.Bold,
             )
             Text(
                 if (count == 0) "Belum ada hasil tersimpan" else "$count hasil tersimpan",
-                style = MaterialTheme.typography.bodyMedium,
+                style = Ds.text.meta,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -249,7 +247,7 @@ private fun HistoryItem(
             if (truncated) {
                 Text(
                     if (expanded) "Ringkas" else "Lihat selengkapnya",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = Ds.text.skillLabel,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
