@@ -48,7 +48,17 @@ fun BraillyApp(
             modifier = Modifier.padding(innerPadding),
             entryProvider = entryProvider {
                 entry<HomeRoute> {
-                    HomeScreen(onNavigate = openTab)
+                    HomeScreen(
+                        onNavigate = openTab,
+                        // Tab Belajar dibuka lebih dulu, lalu Jalur Kuis
+                        // ditumpuk di atasnya. Dengan begitu bilah bawah
+                        // menyorot tab yang benar, dan "kembali" dari kuis
+                        // mendarat di kamus seperti bila dibuka dari sana.
+                        onOpenQuiz = {
+                            openTab(BottomTab.LEARN)
+                            backStack.add(LearnQuizRoute)
+                        },
+                    )
                 }
                 entry<TranslateRoute> { TranslateScreen() }
                 entry<ScanRoute> {

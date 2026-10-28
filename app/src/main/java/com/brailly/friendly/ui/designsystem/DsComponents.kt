@@ -59,6 +59,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.random.Random
@@ -160,6 +161,10 @@ fun DsButton(
                 style = Ds.text.button,
                 color = content,
                 maxLines = 1,
+                // Label kapital berbobot berat mudah melebihi lebarnya pada
+                // skala huruf besar. Dipotong dengan elipsis, bukan dibiarkan
+                // terpangkas di tengah huruf.
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
             )
         }
