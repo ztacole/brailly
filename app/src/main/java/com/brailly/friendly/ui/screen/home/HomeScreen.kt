@@ -1,5 +1,9 @@
 package com.brailly.friendly.ui.screen.home
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,8 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import com.brailly.friendly.core.braille.BrailleMap
 import com.brailly.friendly.ui.component.BrailleCellView
 import com.brailly.friendly.ui.component.BraillyCard
@@ -31,6 +37,18 @@ fun HomeScreen(
     onNavigate: (BottomTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    // Buka tautan banner keluar aplikasi: pakai aplikasi YouTube bila ada,
+    // selain itu jatuh ke browser melalui ACTION_VIEW biasa.
+    val openLink: (String) -> Unit = { url ->
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "Tidak ada aplikasi untuk membuka tautan", Toast.LENGTH_SHORT)
+                .show()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -122,6 +140,16 @@ fun HomeScreen(
                 }
             }
         }
+
+        Text(
+            "Apa Yang Dirasakan Tunanetra",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        HomeBanner(
+            items = placeholderBanners,
+            onOpenLink = openLink,
+        )
     }
 }
 

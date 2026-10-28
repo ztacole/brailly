@@ -33,7 +33,8 @@ val appModule = module {
         ).build()
     }
     single { get<BraillyDatabase>().levelResultDao() }
-    single { LearnProgressRepository(dao = get()) }
+    single { get<BraillyDatabase>().videoProgressDao() }
+    single { LearnProgressRepository(dao = get(), videoDao = get()) }
 
     // ViewModels
     viewModelOf(::TranslateViewModel)

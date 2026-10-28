@@ -88,6 +88,12 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // YouTube IFrame Player untuk node video pembelajaran di Jalur Kuis.
+    implementation(libs.youtube.player.core)
+
+    // Coil untuk memuat thumbnail YouTube pada banner beranda.
+    implementation(libs.coil.compose)
+
     // Koin
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)

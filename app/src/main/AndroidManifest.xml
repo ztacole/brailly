@@ -3,14 +3,20 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!--
-        Hanya izin kamera. Pemindaian berjalan sepenuhnya di perangkat memakai
-        brailly.tflite, sehingga izin INTERNET tidak lagi diperlukan setelah
-        perapian teks lewat Gemini API dan pengunduh model Gemma dihapus.
-        Tanpa izin ini, foto dokumen yang dipindai dijamin tidak dapat
-        meninggalkan perangkat, dan pengguna bisa memverifikasinya sendiri
-        dari daftar izin aplikasi.
+        CAMERA dipakai untuk memindai halaman braille. Pemindaian tetap berjalan
+        sepenuhnya di perangkat memakai brailly.tflite: tidak ada kode di
+        aplikasi ini yang mengunggah foto hasil pindai ke mana pun.
+
+        INTERNET diperlukan sejak materi video pembelajaran di Jalur Kuis
+        diputar lewat YouTube IFrame Player, yang berjalan di dalam WebView.
+        Perlu dicatat bahwa dengan adanya izin ini, jaminan "foto pindai tidak
+        bisa meninggalkan perangkat" tidak lagi dapat diverifikasi pengguna
+        hanya dari daftar izin aplikasi. Satu-satunya trafik jaringan yang
+        dilakukan aplikasi adalah pemutaran video oleh WebView di
+        VideoLessonScreen.
     -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
