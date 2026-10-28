@@ -83,17 +83,27 @@ fun IconActionButton(
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     tint: Color = MaterialTheme.colorScheme.primary,
     container: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
     Surface(
         onClick = onClick,
+        enabled = enabled,
         shape = MaterialTheme.shapes.medium,
         color = container,
         modifier = modifier.size(48.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(22.dp))
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                // Ikon yang diredam mengikuti aturan kontras Material untuk
+                // kendali nonaktif, sehingga keadaannya terlihat tanpa harus
+                // membandingkan dengan tombol lain di sebelahnya.
+                tint = if (enabled) tint else tint.copy(alpha = 0.38f),
+                modifier = Modifier.size(22.dp),
+            )
         }
     }
 }

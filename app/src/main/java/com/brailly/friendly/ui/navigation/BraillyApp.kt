@@ -15,6 +15,7 @@ import com.brailly.friendly.ui.screen.home.HomeScreen
 import com.brailly.friendly.ui.screen.learn.LearnScreen
 import com.brailly.friendly.ui.screen.learn.PathwayScreen
 import com.brailly.friendly.ui.screen.profile.ProfileScreen
+import com.brailly.friendly.ui.screen.scan.ScanHistoryScreen
 import com.brailly.friendly.ui.screen.scan.ScanScreen
 import com.brailly.friendly.ui.screen.translate.TranslateScreen
 
@@ -26,16 +27,18 @@ fun BraillyApp(
     var selectedTab by remember { mutableStateOf(BottomTab.HOME) }
     val backStack = rememberNavBackStack(HomeRoute)
 
+    val openTab: (BottomTab) -> Unit = { tab ->
+        selectedTab = tab
+        // Reset ke root tab yang dipilih (single back stack sederhana untuk MVP)
+        backStack.clear()
+        backStack.add(tab.route)
+    }
+
     Scaffold(
         bottomBar = {
             BraillyBottomBar(
                 selected = selectedTab,
-                onSelect = { tab ->
-                    selectedTab = tab
-                    // Reset ke root tab yang dipilih (single back stack sederhana untuk MVP)
-                    backStack.clear()
-                    backStack.add(tab.route)
-                },
+                onSelect = openTab,
             )
         },
     ) { innerPadding ->
@@ -45,16 +48,19 @@ fun BraillyApp(
             modifier = Modifier.padding(innerPadding),
             entryProvider = entryProvider {
                 entry<HomeRoute> {
-                    HomeScreen(
-                        onNavigate = { tab ->
-                            selectedTab = tab
-                            backStack.clear()
-                            backStack.add(tab.route)
-                        },
-                    )
+                    HomeScreen(onNavigate = openTab)
                 }
                 entry<TranslateRoute> { TranslateScreen() }
-                entry<ScanRoute> { ScanScreen() }
+                entry<ScanRoute> {
+                    ScanScreen(
+                        onOpenHistory = { backStack.add(ScanHistoryRoute) },
+                    )
+                }
+                entry<ScanHistoryRoute> {
+                    ScanHistoryScreen(
+                        onBack = { backStack.removeLastOrNull() },
+                    )
+                }
                 entry<LearnRoute> {
                     LearnScreen(
                         onOpenQuiz = { backStack.add(LearnQuizRoute) },

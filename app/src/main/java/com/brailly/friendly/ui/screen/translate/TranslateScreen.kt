@@ -1,10 +1,6 @@
 package com.brailly.friendly.ui.screen.translate
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,6 +32,9 @@ import com.brailly.friendly.ui.component.IconActionButton
 import com.brailly.friendly.ui.component.PrimaryButton
 import com.brailly.friendly.ui.component.ScreenHeader
 import com.brailly.friendly.ui.component.SecondaryButton
+import com.brailly.friendly.ui.component.SpeakButton
+import com.brailly.friendly.util.copyToClipboard
+import com.brailly.friendly.util.shareText
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -91,6 +90,11 @@ private fun TextToBraille(
         minLines = 2,
     )
 
+    DictationControls(
+        onDictated = viewModel::appendDictation,
+        modifier = Modifier.fillMaxWidth(),
+    )
+
     Text("Hasil Braille", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
     BraillyCard(modifier = Modifier.fillMaxWidth()) {
         BrailleTextView(tokens = state.tokens, modifier = Modifier.fillMaxWidth())
@@ -112,13 +116,10 @@ private fun TextToBraille(
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         IconActionButton(BraillyIcons.Copy, "Salin hasil braille", {
-            if (state.unicode.isNotBlank()) {
-                copyToClipboard(context, state.unicode)
-                Toast.makeText(context, "Braille disalin", Toast.LENGTH_SHORT).show()
-            }
+            context.copyToClipboard(state.unicode, confirmation = "Braille disalin")
         })
         IconActionButton(BraillyIcons.Share, "Bagikan hasil braille", {
-            if (state.unicode.isNotBlank()) shareText(context, state.unicode)
+            context.shareText(state.unicode)
         })
         IconActionButton(BraillyIcons.Close, "Bersihkan teks", viewModel::clear)
     }
@@ -148,11 +149,12 @@ private fun BrailleToText(
         IconActionButton(BraillyIcons.Back, "Hapus huruf terakhir", viewModel::deleteLastCell)
         IconActionButton(BraillyIcons.Close, "Bersihkan semua", viewModel::clear)
         IconActionButton(BraillyIcons.Copy, "Salin hasil teks", {
-            if (state.decodedText.isNotBlank()) {
-                copyToClipboard(context, state.decodedText)
-                Toast.makeText(context, "Teks disalin", Toast.LENGTH_SHORT).show()
-            }
+            context.copyToClipboard(state.decodedText)
         })
+        IconActionButton(BraillyIcons.Share, "Bagikan hasil teks", {
+            context.shareText(state.decodedText)
+        })
+        SpeakButton(text = state.decodedText, contentDescription = "Bacakan hasil teks")
     }
 
     Text("Hasil Teks", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
@@ -164,17 +166,4 @@ private fun BrailleToText(
             else MaterialTheme.colorScheme.onSurface,
         )
     }
-}
-
-private fun copyToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("Brailly", text))
-}
-
-private fun shareText(context: Context, text: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
-    context.startActivity(Intent.createChooser(intent, "Bagikan"))
 }

@@ -23,6 +23,8 @@ kotlinSerialization = "2.4.10"
 room = "2.8.2"
 ksp = "2.3.12"
 
+paging = "3.5.1"
+
 youtubePlayer = "13.0.0"
 
 coil = "2.7.0"
@@ -75,6 +77,13 @@ kotlinx-serialization-core = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+# Jembatan Room -> Paging 3: menyediakan PagingSource langsung dari @Query,
+# dipakai riwayat pemindaian yang jumlahnya tumbuh tanpa batas.
+androidx-room-paging = { module = "androidx.room:room-paging", version.ref = "room" }
+
+# Paging 3
+androidx-paging-runtime = { module = "androidx.paging:paging-runtime", version.ref = "paging" }
+androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
 
 # YouTube IFrame Player (dibungkus WebView). Dipakai untuk node video
 # pembelajaran di Jalur Kuis. Tidak butuh API key maupun YouTube Data API.

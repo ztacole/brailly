@@ -203,4 +203,47 @@ object BraillyIcons {
             moveTo(8.5f, 11f); lineTo(8.5f, 8f); curveTo(8.5f, 5.5f, 10f, 4f, 12f, 4f); curveTo(14f, 4f, 15.5f, 5.5f, 15.5f, 8f); lineTo(15.5f, 11f)
         }
     }
+
+    /** Pengeras suara: menandai tombol "bacakan teks" (text-to-speech). */
+    val Speaker: ImageVector = lineIcon("Speaker") {
+        stroke {
+            moveTo(4f, 9f); lineTo(7f, 9f); lineTo(11f, 5f); lineTo(11f, 19f)
+            lineTo(7f, 15f); lineTo(4f, 15f); close()
+            moveTo(14.5f, 9.5f); curveTo(16f, 10.8f, 16f, 13.2f, 14.5f, 14.5f)
+            moveTo(17.5f, 6.5f); curveTo(20.5f, 9f, 20.5f, 15f, 17.5f, 17.5f)
+        }
+    }
+
+    /** Kotak henti: dipakai saat pembacaan sedang berjalan. */
+    val Stop: ImageVector = lineIcon("Stop") {
+        stroke {
+            moveTo(6.5f, 6.5f); lineTo(17.5f, 6.5f); lineTo(17.5f, 17.5f)
+            lineTo(6.5f, 17.5f); close()
+        }
+    }
+
+    /** Jam dengan anak panah balik arah: riwayat pemindaian. */
+    val History: ImageVector = lineIcon("History") {
+        stroke {
+            // Busur jam dibiarkan terbuka di kiri atas sebagai tempat anak panah.
+            moveTo(4.2f, 8.6f)
+            curveTo(5.9f, 5.8f, 8.7f, 4f, 12f, 4f)
+            curveTo(16.4f, 4f, 20f, 7.6f, 20f, 12f)
+            curveTo(20f, 16.4f, 16.4f, 20f, 12f, 20f)
+            curveTo(8.4f, 20f, 5.4f, 17.7f, 4.4f, 14.4f)
+            moveTo(3.2f, 4.6f); lineTo(4.2f, 8.6f); lineTo(8.2f, 7.6f)
+            moveTo(12f, 8f); lineTo(12f, 12f); lineTo(15f, 13.6f)
+        }
+    }
+
+    /** Tempat sampah: menghapus satu entri riwayat atau seluruhnya. */
+    val Trash: ImageVector = lineIcon("Trash") {
+        stroke {
+            moveTo(5f, 7f); lineTo(19f, 7f)
+            moveTo(9f, 7f); lineTo(9f, 4.5f); lineTo(15f, 4.5f); lineTo(15f, 7f)
+            moveTo(6.5f, 7f); lineTo(7.5f, 20f); lineTo(16.5f, 20f); lineTo(17.5f, 7f)
+            moveTo(10.5f, 10.5f); lineTo(10.5f, 16.5f)
+            moveTo(13.5f, 10.5f); lineTo(13.5f, 16.5f)
+        }
+    }
 }

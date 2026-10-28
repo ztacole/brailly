@@ -1,11 +1,13 @@
 package com.brailly.friendly.ui.screen.scan
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.brailly.friendly.data.scan.BrailleDetector
 import com.brailly.friendly.core.scan.ReadingQuality
 import com.brailly.friendly.data.scan.BrailleDetectorException
+import com.brailly.friendly.data.scan.ScanHistoryRepository
 import com.brailly.friendly.data.scan.ScannedLine
 import com.brailly.friendly.data.scan.ScannedParagraph
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +54,7 @@ sealed interface ScanState {
 
 /**
  * Mengatur alur pemindaian: ambil gambar, jalankan model Braille, tampilkan
- * teksnya.
+ * teksnya, lalu simpan ke riwayat.
  *
  * Hasil deteksi disajikan apa adanya. Perapian dengan model bahasa sengaja
  * tidak dipakai di sini: untuk aplikasi yang membacakan karya tulis orang,
@@ -61,6 +63,7 @@ sealed interface ScanState {
  */
 class ScanViewModel(
     private val detector: BrailleDetector,
+    private val history: ScanHistoryRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<ScanState>(ScanState.Idle)
@@ -69,16 +72,16 @@ class ScanViewModel(
     fun onImageCaptured(bitmap: Bitmap) {
         _state.value = ScanState.Processing
         viewModelScope.launch {
-            _state.value = try {
-                val hasil = withContext(Dispatchers.Default) { detector.detect(bitmap) }
+            val hasil = try {
+                val deteksi = withContext(Dispatchers.Default) { detector.detect(bitmap) }
                 ScanState.Result(
-                    text = hasil.rawText,
-                    paragraphs = hasil.paragraphs,
-                    lines = hasil.lines,
-                    confidence = hasil.confidence,
-                    cellCount = hasil.cellCount,
-                    quality = hasil.quality,
-                    knownFraction = hasil.knownFraction,
+                    text = deteksi.rawText,
+                    paragraphs = deteksi.paragraphs,
+                    lines = deteksi.lines,
+                    confidence = deteksi.confidence,
+                    cellCount = deteksi.cellCount,
+                    quality = deteksi.quality,
+                    knownFraction = deteksi.knownFraction,
                 )
             } catch (e: BrailleDetectorException) {
                 // Model bermasalah: perlu diberitahukan, bukan disamarkan
@@ -87,6 +90,30 @@ class ScanViewModel(
             } catch (e: Exception) {
                 ScanState.Error(e.message ?: "Gagal memproses gambar")
             }
+
+            // Hasilnya ditampilkan lebih dulu, penyimpanan riwayat menyusul.
+            // Urutan ini disengaja: menulis ke basis data sebelum menampilkan
+            // hasil membuat kegagalan penyimpanan tampil sebagai pemindaian
+            // yang gagal, padahal bacaannya sudah benar.
+            _state.value = hasil
+            if (hasil is ScanState.Result) recordToHistory(hasil)
+        }
+    }
+
+    private suspend fun recordToHistory(result: ScanState.Result) {
+        try {
+            history.record(
+                text = result.text,
+                confidence = result.confidence,
+                cellCount = result.cellCount,
+                paragraphCount = result.paragraphs.size,
+                doubtful = result.isDoubtful,
+            )
+        } catch (e: Exception) {
+            // Riwayat adalah kemudahan, bukan hasil utama pemindaian. Bila
+            // penyimpanannya gagal, teks yang sudah terbaca tetap ditampilkan
+            // dan masih bisa disalin atau dibagikan.
+            Log.w(TAG, "Hasil pemindaian gagal disimpan ke riwayat", e)
         }
     }
 
@@ -101,5 +128,9 @@ class ScanViewModel(
     override fun onCleared() {
         detector.close()
         super.onCleared()
+    }
+
+    private companion object {
+        const val TAG = "ScanViewModel"
     }
 }

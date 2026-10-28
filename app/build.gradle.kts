@@ -86,7 +86,13 @@ dependencies {
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.paging)
     ksp(libs.androidx.room.compiler)
+
+    // Paging 3 untuk riwayat pemindaian: daftarnya bertambah setiap kali
+    // pengguna memindai, jadi dimuat sepotong-sepotong daripada sekaligus.
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
 
     // YouTube IFrame Player untuk node video pembelajaran di Jalur Kuis.
     implementation(libs.youtube.player.core)

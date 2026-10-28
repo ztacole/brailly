@@ -1,6 +1,7 @@
 package com.brailly.friendly.ui.screen.scan
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -16,6 +17,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,20 +41,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.brailly.friendly.data.speech.TextToSpeechManager
 import com.brailly.friendly.ui.component.BraillyCard
 import com.brailly.friendly.ui.component.BraillyIcons
+import com.brailly.friendly.ui.component.IconActionButton
 import com.brailly.friendly.ui.component.PrimaryButton
 import com.brailly.friendly.ui.component.ScreenHeader
 import com.brailly.friendly.ui.component.SecondaryButton
+import com.brailly.friendly.ui.component.SpeakButton
+import com.brailly.friendly.util.copyToClipboard
+import com.brailly.friendly.util.shareText
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+
+/** Penanda pembacaan hasil pemindaian yang sedang tampil. */
+private const val SCAN_RESULT_UTTERANCE_ID = "scan-result"
 
 @Composable
 fun ScanScreen(
+    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ScanViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val speaker: TextToSpeechManager = koinInject()
 
     var hasPermission by remember {
         mutableStateOf(
@@ -64,23 +77,44 @@ fun ScanScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted -> hasPermission = granted }
 
+    // ImageCapture dipegang di tingkat layar, bukan di dalam CameraView,
+    // supaya tombol jepret dan pemanggil lain memakai use case yang sama.
+    val imageCapture = remember { ImageCapture.Builder().build() }
+    val takePicture = { captureTo(context, imageCapture, viewModel::onImageCaptured) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        ScreenHeader(title = "Scan Braille", subtitle = "Arahkan kamera ke teks braille fisik")
+        ScreenHeader(
+            title = "Scan Braille",
+            subtitle = "Arahkan kamera ke teks braille fisik",
+            trailing = {
+                IconActionButton(
+                    icon = BraillyIcons.History,
+                    contentDescription = "Buka riwayat scan",
+                    onClick = onOpenHistory,
+                )
+            },
+        )
 
         when (val s = state) {
-            is ScanState.Result -> ResultView(s, onScanAgain = viewModel::reset)
+            is ScanState.Result -> ResultView(
+                result = s,
+                onScanAgain = {
+                    speaker.stop()
+                    viewModel.reset()
+                },
+            )
             is ScanState.Processing -> ProcessingView()
             is ScanState.Error -> ErrorView(s.message, onRetry = viewModel::reset)
             else -> {
                 if (!hasPermission) {
                     PermissionView { permissionLauncher.launch(Manifest.permission.CAMERA) }
                 } else {
-                    CameraView(onCaptured = viewModel::onImageCaptured)
+                    CameraView(imageCapture = imageCapture, onCapture = takePicture)
                 }
             }
         }
@@ -88,10 +122,8 @@ fun ScanScreen(
 }
 
 @Composable
-private fun CameraView(onCaptured: (Bitmap) -> Unit) {
-    val context = LocalContext.current
+private fun CameraView(imageCapture: ImageCapture, onCapture: () -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
-    val imageCapture = remember { ImageCapture.Builder().build() }
 
     Box(
         modifier = Modifier
@@ -130,34 +162,39 @@ private fun CameraView(onCaptured: (Bitmap) -> Unit) {
 
     PrimaryButton(
         text = "Ambil Gambar",
-        onClick = {
-            imageCapture.takePicture(
-                ContextCompat.getMainExecutor(context),
-                object : ImageCapture.OnImageCapturedCallback() {
-                    override fun onCaptureSuccess(image: ImageProxy) {
-                        // toBitmap() memberi gambar dalam orientasi sensor, bukan
-                        // orientasi layar. Pada ponsel tegak nilainya biasanya 90
-                        // derajat. PreviewView menerapkannya sendiri sehingga
-                        // pratinjau tampak benar, tetapi bitmap hasil jepretan
-                        // tetap miring -- dan sel Braille yang miring membuat
-                        // pola titiknya terbaca salah.
-                        val derajat = image.imageInfo.rotationDegrees
-                        val bitmap = image.toBitmap()
-                        image.close()
-                        onCaptured(bitmap.diputar(derajat))
-                    }
-
-                    override fun onError(exception: ImageCaptureException) {
-                        // Kegagalan capture diabaikan; pengguna dapat mencoba lagi.
-                    }
-                },
-            )
-        },
+        onClick = onCapture,
         modifier = Modifier.fillMaxWidth(),
         leadingIcon = BraillyIcons.Camera,
     )
 }
 
+private fun captureTo(
+    context: Context,
+    imageCapture: ImageCapture,
+    onCaptured: (Bitmap) -> Unit,
+) {
+    imageCapture.takePicture(
+        ContextCompat.getMainExecutor(context),
+        object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: ImageProxy) {
+                // toBitmap() memberi gambar dalam orientasi sensor, bukan
+                // orientasi layar. Pada ponsel tegak nilainya biasanya 90
+                // derajat. PreviewView menerapkannya sendiri sehingga
+                // pratinjau tampak benar, tetapi bitmap hasil jepretan
+                // tetap miring -- dan sel Braille yang miring membuat
+                // pola titiknya terbaca salah.
+                val derajat = image.imageInfo.rotationDegrees
+                val bitmap = image.toBitmap()
+                image.close()
+                onCaptured(bitmap.diputar(derajat))
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                // Kegagalan capture diabaikan; pengguna dapat mencoba lagi.
+            }
+        },
+    )
+}
 
 /**
  * Putar bitmap sesuai orientasi sensor kamera. Tanpa ini, sel Braille ikut
@@ -212,6 +249,8 @@ private fun ProcessingView() {
 
 @Composable
 private fun ResultView(result: ScanState.Result, onScanAgain: () -> Unit) {
+    val context = LocalContext.current
+
     BraillyCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Hasil Scan", style = MaterialTheme.typography.titleMedium)
@@ -250,6 +289,29 @@ private fun ResultView(result: ScanState.Result, onScanAgain: () -> Unit) {
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SpeakButton(
+                        text = result.text,
+                        contentDescription = "Bacakan hasil scan",
+                        utteranceId = SCAN_RESULT_UTTERANCE_ID,
+                    )
+                    IconActionButton(
+                        icon = BraillyIcons.Copy,
+                        contentDescription = "Salin hasil scan",
+                        onClick = {
+                            context.copyToClipboard(
+                                result.text,
+                                confirmation = "Hasil scan disalin",
+                            )
+                        },
+                    )
+                    IconActionButton(
+                        icon = BraillyIcons.Share,
+                        contentDescription = "Bagikan hasil scan",
+                        onClick = { context.shareText(result.text) },
+                    )
+                }
             }
         }
     }

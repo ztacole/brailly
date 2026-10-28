@@ -42,6 +42,20 @@ class TranslateViewModel(
         )
     }
 
+    /**
+     * Sambungkan hasil dikte ke teks yang sudah ada.
+     *
+     * Disambung, bukan ditimpa: pengguna sering mendiktekan kalimat demi
+     * kalimat, dan menimpa isi kolom akan menghapus hasil dikte sebelumnya
+     * tanpa cara mengembalikannya.
+     */
+    fun appendDictation(text: String) {
+        val addition = text.trim()
+        if (addition.isEmpty()) return
+        val current = _state.value.input.trimEnd()
+        onInputChange(if (current.isEmpty()) addition else "$current $addition")
+    }
+
     // --- Braille -> Text ---
     fun toggleDot(dot: Int) {
         val current = _state.value.activeDots

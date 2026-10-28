@@ -12,16 +12,26 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.brailly.friendly.data.speech.SpeechEngineStatus
+import com.brailly.friendly.data.speech.SpeechRate
+import com.brailly.friendly.data.speech.TextToSpeechManager
 import com.brailly.friendly.ui.component.BraillyCard
 import com.brailly.friendly.ui.component.BraillyIcons
 import com.brailly.friendly.ui.component.ScreenHeader
+import com.brailly.friendly.ui.component.SecondaryButton
+import org.koin.compose.koinInject
 
 @Composable
 fun ProfileScreen(
@@ -94,8 +104,8 @@ fun ProfileScreen(
             }
         }
 
-        // Info item statis (placeholder MVP)
-        SettingItem(BraillyIcons.Play, "Kecepatan Suara", "Normal")
+        SpeechRateSetting()
+        // "Ukuran Teks" masih placeholder MVP: belum ada yang membacanya.
         SettingItem(BraillyIcons.Edit, "Ukuran Teks", "Normal")
 
         Spacer(Modifier.size(8.dp))
@@ -106,6 +116,90 @@ fun ProfileScreen(
         )
     }
 }
+
+/**
+ * Setelan kecepatan baca untuk fitur bacakan (text-to-speech).
+ *
+ * Pilihannya langsung diterapkan dan dibacakan sebagai contoh, karena
+ * "Lambat" dan "Cepat" hanya berarti setelah didengar. Nilainya disimpan oleh
+ * [com.brailly.friendly.data.speech.TextToSpeechManager] sehingga bertahan
+ * antar sesi.
+ */
+@Composable
+private fun SpeechRateSetting() {
+    val speaker: TextToSpeechManager = koinInject()
+    val speech by speaker.state.collectAsStateWithLifecycle()
+
+    BraillyCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    BraillyIcons.Speaker,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(Modifier.size(12.dp))
+                Column {
+                    Text(
+                        "Kecepatan Suara",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        // `problem` memuat alasan paling akhir, baik mesinnya
+                        // yang gagal disiapkan maupun satu permintaan baca
+                        // yang ditolak, jadi diutamakan atas teks biasa.
+                        speech.problem ?: when {
+                            !speech.isReady -> "Menyiapkan mesin suara..."
+                            speech.usingFallbackLanguage ->
+                                "Mesin suara tidak punya bahasa Indonesia, " +
+                                    "memakai bahasa bawaan"
+                            else -> "Dipakai saat membacakan hasil scan dan riwayat"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                SpeechRate.entries.forEachIndexed { index, rate ->
+                    SegmentedButton(
+                        selected = speech.rate == rate,
+                        onClick = {
+                            speaker.setRate(rate)
+                            speaker.speak(
+                                "Kecepatan suara ${rate.label}",
+                                utteranceId = SPEECH_RATE_PREVIEW_ID,
+                            )
+                        },
+                        shape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = SpeechRate.entries.size,
+                        ),
+                    ) { Text(rate.label) }
+                }
+            }
+
+            // Jalan keluar saat mesin suaranya gagal disiapkan, misalnya
+            // karena baru dipasang setelah aplikasi berjalan. Tanpa ini
+            // pengguna harus menutup aplikasinya dulu agar fitur bacakan
+            // hidup kembali.
+            if (speech.status is SpeechEngineStatus.Unavailable) {
+                SecondaryButton(
+                    text = "Siapkan Ulang Mesin Suara",
+                    onClick = speaker::retryInit,
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = BraillyIcons.Speaker,
+                )
+            }
+        }
+    }
+}
+
+/** Penanda contoh suara, dipisahkan dari bacaan hasil scan maupun riwayat. */
+private const val SPEECH_RATE_PREVIEW_ID = "profile-speech-rate-preview"
 
 @Composable
 private fun StatCard(modifier: Modifier, icon: ImageVector, value: String, label: String) {

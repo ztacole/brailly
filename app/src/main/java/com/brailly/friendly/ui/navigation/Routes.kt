@@ -15,6 +15,10 @@ data object TranslateRoute : NavKey
 @Serializable
 data object ScanRoute : NavKey
 
+/** Sub-rute Scan: riwayat hasil pemindaian (dibuka dari ikon di layar Scan). */
+@Serializable
+data object ScanHistoryRoute : NavKey
+
 @Serializable
 data object LearnRoute : NavKey
 

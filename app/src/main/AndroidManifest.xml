@@ -17,7 +17,35 @@
     -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        RECORD_AUDIO dipakai fitur dikte (voice-to-text) di layar Terjemah.
+        Audionya diproses oleh layanan pengenalan suara bawaan sistem, bukan
+        oleh Brailly, dan aplikasi hanya menerima teks hasil transkripsinya.
+        Perekaman hanya berjalan selama satu ucapan setelah tombol mikrofon
+        ditekan; tidak ada mode mendengarkan terus-menerus.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <!--
+        Sejak Android 11 daftar paket lain tidak lagi terlihat secara penuh.
+        Tanpa deklarasi ini TextToSpeech tidak menemukan mesin suara apa pun
+        dan SpeechRecognizer.isRecognitionAvailable() selalu mengembalikan
+        false, sehingga fitur bacakan dan dikte mati tanpa pesan kesalahan
+        yang bisa ditelusuri.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
 
     <application
         android:name=".BraillyApplication"
