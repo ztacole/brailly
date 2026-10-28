@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -21,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brailly.friendly.ui.component.BrailleKeypad
@@ -33,6 +31,9 @@ import com.brailly.friendly.ui.component.PrimaryButton
 import com.brailly.friendly.ui.component.ScreenHeader
 import com.brailly.friendly.ui.component.SecondaryButton
 import com.brailly.friendly.ui.component.SpeakButton
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsDim
+import com.brailly.friendly.ui.designsystem.DsTextField
 import com.brailly.friendly.util.copyToClipboard
 import com.brailly.friendly.util.shareText
 import org.koin.compose.viewmodel.koinViewModel
@@ -49,7 +50,7 @@ fun TranslateScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
+            .padding(DsDim.screenPadding),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenHeader(title = "Terjemah", subtitle = "Braille dua arah")
@@ -80,13 +81,12 @@ private fun TextToBraille(
     viewModel: TranslateViewModel,
     context: Context,
 ) {
-    OutlinedTextField(
+    DsTextField(
         value = state.input,
         onValueChange = viewModel::onInputChange,
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("Masukkan teks") },
-        placeholder = { Text("Contoh: Halo") },
-        shape = MaterialTheme.shapes.medium,
+        label = "Masukkan teks",
+        placeholder = "Contoh: Halo",
         minLines = 2,
     )
 
@@ -95,7 +95,7 @@ private fun TextToBraille(
         modifier = Modifier.fillMaxWidth(),
     )
 
-    Text("Hasil Braille", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+    Text("Hasil Braille", style = Ds.text.sectionHeader, color = MaterialTheme.colorScheme.onBackground)
     BraillyCard(modifier = Modifier.fillMaxWidth()) {
         BrailleTextView(tokens = state.tokens, modifier = Modifier.fillMaxWidth())
     }
@@ -103,11 +103,11 @@ private fun TextToBraille(
     if (state.unicode.isNotBlank()) {
         BraillyCard(modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.surfaceVariant) {
             Column {
-                Text("Unicode Braille", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
+                Text("Unicode Braille", style = Ds.text.labelUpper, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
                 Text(
                     state.unicode,
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Monospace),
+                    style = Ds.text.brailleUnicode,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
@@ -133,7 +133,7 @@ private fun BrailleToText(
 ) {
     Text(
         "Tekan kombinasi titik lalu tambahkan sebagai huruf",
-        style = MaterialTheme.typography.bodyMedium,
+        style = Ds.text.helper,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 
@@ -157,11 +157,11 @@ private fun BrailleToText(
         SpeakButton(text = state.decodedText, contentDescription = "Bacakan hasil teks")
     }
 
-    Text("Hasil Teks", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+    Text("Hasil Teks", style = Ds.text.sectionHeader, color = MaterialTheme.colorScheme.onBackground)
     BraillyCard(modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.surfaceVariant) {
         Text(
             state.decodedText.ifBlank { "Hasil terjemahan akan muncul di sini" },
-            style = MaterialTheme.typography.headlineMedium,
+            style = Ds.text.display,
             color = if (state.decodedText.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
             else MaterialTheme.colorScheme.onSurface,
         )

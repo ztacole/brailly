@@ -15,19 +15,20 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brailly.friendly.ui.component.BrailleCellView
 import com.brailly.friendly.ui.component.BraillyCard
 import com.brailly.friendly.ui.component.BraillyIcons
 import com.brailly.friendly.ui.component.PrimaryButton
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsDim
+import com.brailly.friendly.ui.designsystem.DsTextField
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -46,7 +47,7 @@ fun LearnScreen(
         columns = GridCells.Fixed(4),
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
+            .padding(horizontal = DsDim.screenPadding),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 20.dp),
@@ -55,7 +56,7 @@ fun LearnScreen(
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
                     "Belajar",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = Ds.text.screenTitle,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
 
@@ -64,7 +65,7 @@ fun LearnScreen(
 
                 Text(
                     "Kamus Braille",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = Ds.text.sectionHeader,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
 
@@ -80,13 +81,12 @@ fun LearnScreen(
                 }
 
                 if (state.tab == DictionaryTab.ALPHABET) {
-                    OutlinedTextField(
+                    DsTextField(
                         value = state.query,
                         onValueChange = viewModel::onQueryChange,
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Cari huruf") },
-                        leadingIcon = { Icon(BraillyIcons.Search, contentDescription = null) },
-                        shape = MaterialTheme.shapes.medium,
+                        label = "Cari huruf",
+                        placeholder = "Ketik huruf, misalnya A",
                         singleLine = true,
                     )
                 }
@@ -132,14 +132,13 @@ private fun QuizEntryCard(state: LearnUiState, onOpenQuiz: () -> Unit) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "Jalur Kuis",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = Ds.text.skillLabel,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         if (total > 0) "$done dari $total level selesai"
                         else "Mulai belajar braille lewat kuis bertingkat",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = Ds.text.helper,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
@@ -169,14 +168,13 @@ private fun DictionaryCell(
             BrailleCellView(cell = cell, dotSize = 9.dp, gap = 3.dp)
             Text(
                 symbol,
-                style = MaterialTheme.typography.titleMedium,
+                style = Ds.text.skillLabel,
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
             )
             if (caption != null) {
                 Text(
                     caption,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = Ds.text.meta,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

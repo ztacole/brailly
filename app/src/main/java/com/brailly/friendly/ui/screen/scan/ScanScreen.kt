@@ -49,6 +49,7 @@ import com.brailly.friendly.ui.component.PrimaryButton
 import com.brailly.friendly.ui.component.ScreenHeader
 import com.brailly.friendly.ui.component.SecondaryButton
 import com.brailly.friendly.ui.component.SpeakButton
+import com.brailly.friendly.ui.designsystem.Ds
 import com.brailly.friendly.util.copyToClipboard
 import com.brailly.friendly.util.shareText
 import org.koin.compose.koinInject
@@ -320,7 +321,7 @@ private fun ResultView(result: ScanState.Result, onScanAgain: () -> Unit) {
 
 @Composable
 private fun ErrorView(message: String, onRetry: () -> Unit) {
-    BraillyCard(modifier = Modifier.fillMaxWidth(), containerColor = MaterialTheme.colorScheme.errorContainer) {
+    BraillyCard(modifier = Modifier.fillMaxWidth(), containerColor = Ds.colors.wrongContainer) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Terjadi kesalahan", style = MaterialTheme.typography.titleMedium)
             Text(message, style = MaterialTheme.typography.bodyMedium)

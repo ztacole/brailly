@@ -23,13 +23,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.brailly.friendly.core.braille.BrailleMap
 import com.brailly.friendly.ui.component.BrailleCellView
 import com.brailly.friendly.ui.component.BraillyCard
 import com.brailly.friendly.ui.component.BraillyIcons
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsDim
+import com.brailly.friendly.ui.designsystem.readableContent
 import com.brailly.friendly.ui.navigation.BottomTab
 
 @Composable
@@ -53,19 +55,19 @@ fun HomeScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
+            .padding(DsDim.screenPadding),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         // Sapaan
         Column {
             Text(
                 "Selamat datang di",
-                style = MaterialTheme.typography.bodyLarge,
+                style = Ds.text.helper,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 "Brailly",
-                style = MaterialTheme.typography.displaySmall,
+                style = Ds.text.display,
                 color = MaterialTheme.colorScheme.primary,
             )
         }
@@ -76,7 +78,7 @@ fun HomeScreen(
         // Shortcut cepat
         Text(
             "Fitur Cepat",
-            style = MaterialTheme.typography.titleMedium,
+            style = Ds.text.sectionHeader,
             color = MaterialTheme.colorScheme.onBackground,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -115,7 +117,7 @@ fun HomeScreen(
         // Sorotan alfabet
         Text(
             "Cuplikan Alfabet",
-            style = MaterialTheme.typography.titleMedium,
+            style = Ds.text.sectionHeader,
             color = MaterialTheme.colorScheme.onBackground,
         )
         BraillyCard(modifier = Modifier.fillMaxWidth()) {
@@ -143,7 +145,7 @@ fun HomeScreen(
 
         Text(
             "Apa Yang Dirasakan Tunanetra",
-            style = MaterialTheme.typography.titleMedium,
+            style = Ds.text.sectionHeader,
             color = MaterialTheme.colorScheme.onBackground,
         )
         HomeBanner(
@@ -155,29 +157,31 @@ fun HomeScreen(
 
 @Composable
 private fun StreakCard() {
+    val streak = Ds.colors.streak
     BraillyCard(
         modifier = Modifier.fillMaxWidth(),
-        containerColor = MaterialTheme.colorScheme.primary,
+        containerColor = streak,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 BraillyIcons.Streak,
-                contentDescription = "Streak belajar",
-                tint = MaterialTheme.colorScheme.secondary,
+                contentDescription = null,
+                // Glyph dan teks memakai nada yang kontras di atas muka
+                // oranye, bukan `onPrimary` yang bernilai putih.
+                tint = streak.readableContent(),
                 modifier = Modifier.size(40.dp),
             )
             Spacer(Modifier.size(16.dp))
             Column {
                 Text(
                     "3 hari beruntun",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold,
+                    style = Ds.text.sectionHeader,
+                    color = streak.readableContent(),
                 )
                 Text(
                     "Lanjutkan belajar hari ini untuk menjaga streak-mu",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = Ds.text.helper,
+                    color = streak.readableContent(),
                 )
             }
         }
@@ -200,8 +204,8 @@ private fun QuickAction(
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp),
             )
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(title, style = Ds.text.skillLabel, color = MaterialTheme.colorScheme.onSurface)
+            Text(subtitle, style = Ds.text.meta, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

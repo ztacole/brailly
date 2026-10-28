@@ -1,32 +1,32 @@
 package com.brailly.friendly.ui.component
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsButton
+import com.brailly.friendly.ui.designsystem.DsButtonVariant
+import com.brailly.friendly.ui.designsystem.DsIconButton
+import com.brailly.friendly.ui.designsystem.DsSlabSurface
 
-/** Tombol utama dengan touch target >= 48dp (aksesibilitas). */
+/**
+ * Komponen umum aplikasi, kini digambar bergaya slab 3D.
+ *
+ * Tanda tangan setiap composable di berkas ini tidak berubah, sehingga seluruh
+ * layar ikut berganti tampilan tanpa satu pun pemanggilnya perlu disentuh.
+ * Isinya mendelegasikan ke komponen di `ui/designsystem`.
+ */
+
+/** Tombol utama: muka 56dp di atas ledge 4dp, label kapital. */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -35,24 +35,17 @@ fun PrimaryButton(
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
 ) {
-    Button(
+    DsButton(
+        title = text,
         onClick = onClick,
+        modifier = modifier,
+        variant = DsButtonVariant.Primary,
         enabled = enabled,
-        modifier = modifier.height(52.dp),
-        shape = MaterialTheme.shapes.large,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-        ),
-    ) {
-        if (leadingIcon != null) {
-            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text("  ")
-        }
-        Text(text, style = MaterialTheme.typography.labelLarge)
-    }
+        leadingIcon = leadingIcon,
+    )
 }
 
+/** Tombol sekunder: muka permukaan dengan border 2dp, bentuk slab yang sama. */
 @Composable
 fun SecondaryButton(
     text: String,
@@ -61,22 +54,22 @@ fun SecondaryButton(
     enabled: Boolean = true,
     leadingIcon: ImageVector? = null,
 ) {
-    OutlinedButton(
+    DsButton(
+        title = text,
         onClick = onClick,
+        modifier = modifier,
+        variant = DsButtonVariant.Neutral,
         enabled = enabled,
-        modifier = modifier.height(52.dp),
-        shape = MaterialTheme.shapes.large,
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary),
-    ) {
-        if (leadingIcon != null) {
-            Icon(leadingIcon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text("  ")
-        }
-        Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-    }
+        leadingIcon = leadingIcon,
+    )
 }
 
-/** Tombol ikon bulat dengan label semantik untuk screen reader. */
+/**
+ * Tombol ikon dengan label semantik untuk pembaca layar.
+ *
+ * Mukanya tetap 48dp penuh dan ledge ditambahkan di bawahnya, bukan dipotong
+ * dari dalamnya, supaya sasaran sentuhnya tidak menyusut di bawah 48dp.
+ */
 @Composable
 fun IconActionButton(
     icon: ImageVector,
@@ -87,28 +80,24 @@ fun IconActionButton(
     tint: Color = MaterialTheme.colorScheme.primary,
     container: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
-    Surface(
+    DsIconButton(
+        icon = icon,
+        contentDescription = contentDescription,
         onClick = onClick,
+        modifier = modifier,
         enabled = enabled,
-        shape = MaterialTheme.shapes.medium,
-        color = container,
-        modifier = modifier.size(48.dp),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                icon,
-                contentDescription = contentDescription,
-                // Ikon yang diredam mengikuti aturan kontras Material untuk
-                // kendali nonaktif, sehingga keadaannya terlihat tanpa harus
-                // membandingkan dengan tombol lain di sebelahnya.
-                tint = if (enabled) tint else tint.copy(alpha = 0.38f),
-                modifier = Modifier.size(22.dp),
-            )
-        }
-    }
+        tint = tint,
+        face = container,
+    )
 }
 
-/** Kartu minimalis dengan corner membulat. */
+/**
+ * Kartu slab: permukaan rata, border 2dp, ledge 4dp, tanpa bayangan.
+ *
+ * Kedalaman sengaja datang dari ledge, bukan `CardDefaults.cardElevation`,
+ * sehingga tampilannya tetap sama di mode terang maupun gelap. Elevation
+ * Material menipis sampai hampir tak terlihat di atas permukaan gelap.
+ */
 @Composable
 fun BraillyCard(
     modifier: Modifier = Modifier,
@@ -116,25 +105,15 @@ fun BraillyCard(
     containerColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable () -> Unit,
 ) {
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            modifier = modifier,
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(containerColor = containerColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        ) { Box(Modifier.padding(16.dp)) { content() } }
-    } else {
-        Card(
-            modifier = modifier,
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(containerColor = containerColor),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        ) { Box(Modifier.padding(16.dp)) { content() } }
-    }
+    DsSlabSurface(
+        modifier = modifier,
+        faceColor = containerColor,
+        onClick = onClick,
+        content = content,
+    )
 }
 
-/** Header layar sederhana. */
+/** Header layar. */
 @Composable
 fun ScreenHeader(
     title: String,
@@ -147,10 +126,18 @@ fun ScreenHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        androidx.compose.foundation.layout.Column {
-            Text(title, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+        Column {
+            Text(
+                title,
+                style = Ds.text.screenTitle,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
             if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    subtitle,
+                    style = Ds.text.helper,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         if (trailing != null) trailing()

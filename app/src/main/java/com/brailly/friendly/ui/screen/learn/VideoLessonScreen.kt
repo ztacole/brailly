@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +33,8 @@ import com.brailly.friendly.ui.component.BraillyIcons
 import com.brailly.friendly.ui.component.IconActionButton
 import com.brailly.friendly.ui.component.PrimaryButton
 import com.brailly.friendly.ui.component.SecondaryButton
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsProgressBar
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.YouTubePlayer
 import com.pierfrancescosoffritti.androidyoutubeplayer.core.player.listeners.AbstractYouTubePlayerListener
@@ -235,13 +236,10 @@ private fun GateStatusCard(
         else MaterialTheme.colorScheme.surfaceVariant,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            LinearProgressIndicator(
-                progress = { video.gateProgress },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            DsProgressBar(progress = video.gateProgress)
             Text(
                 message,
-                style = MaterialTheme.typography.bodySmall,
+                style = Ds.text.helper,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 // Diumumkan ulang oleh pembaca layar setiap statusnya berubah.
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },

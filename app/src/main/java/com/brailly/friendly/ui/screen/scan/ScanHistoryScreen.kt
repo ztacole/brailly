@@ -38,6 +38,7 @@ import com.brailly.friendly.ui.component.BraillyIcons
 import com.brailly.friendly.ui.component.IconActionButton
 import com.brailly.friendly.ui.component.PrimaryButton
 import com.brailly.friendly.ui.component.SpeakButton
+import com.brailly.friendly.ui.designsystem.Ds
 import com.brailly.friendly.util.asHistoryTimestamp
 import com.brailly.friendly.util.copyToClipboard
 import com.brailly.friendly.util.shareText
@@ -302,7 +303,7 @@ private fun HistoryMessageCard(
     BraillyCard(
         modifier = Modifier.fillMaxWidth(),
         containerColor = if (isError) {
-            MaterialTheme.colorScheme.errorContainer
+            Ds.colors.wrongContainer
         } else {
             MaterialTheme.colorScheme.surface
         },

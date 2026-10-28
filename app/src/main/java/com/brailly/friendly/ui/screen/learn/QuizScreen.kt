@@ -1,5 +1,6 @@
 package com.brailly.friendly.ui.screen.learn
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,19 +14,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brailly.friendly.core.braille.BrailleCell
@@ -33,14 +31,33 @@ import com.brailly.friendly.core.braille.BrailleToken
 import com.brailly.friendly.core.braille.BrailleTranslator
 import com.brailly.friendly.ui.component.BrailleKeypad
 import com.brailly.friendly.ui.component.BrailleTextView
-import com.brailly.friendly.ui.component.BraillyCard
 import com.brailly.friendly.ui.component.BraillyIcons
 import com.brailly.friendly.ui.component.IconActionButton
 import com.brailly.friendly.ui.component.PrimaryButton
 import com.brailly.friendly.ui.component.SecondaryButton
-import com.brailly.friendly.ui.theme.ErrorRed
-import com.brailly.friendly.ui.theme.SuccessGreen
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsAnswerTile
+import com.brailly.friendly.ui.designsystem.DsButton
+import com.brailly.friendly.ui.designsystem.DsButtonVariant
+import com.brailly.friendly.ui.designsystem.DsConfetti
+import com.brailly.friendly.ui.designsystem.DsDim
+import com.brailly.friendly.ui.designsystem.DsFeedbackSheet
+import com.brailly.friendly.ui.designsystem.DsHudChip
+import com.brailly.friendly.ui.designsystem.DsProgressBar
+import com.brailly.friendly.ui.designsystem.DsSlabSurface
+import com.brailly.friendly.ui.designsystem.DsTextField
+import com.brailly.friendly.ui.designsystem.DsTileState
+import com.brailly.friendly.ui.designsystem.dsAnimationsEnabled
+import com.brailly.friendly.ui.designsystem.dsTileTextColor
 
+/**
+ * Satu soal kuis.
+ *
+ * Tata letaknya mengikuti pola layar pelajaran: tombol tutup dan bilah progres
+ * di atas, soal pada kanvas rata, pilihan jawaban sebagai tile slab, lalu
+ * lembar umpan balik di bawah. Benar dan salah tidak pernah ditandai warna
+ * saja: tile yang salah bergetar, dan lembar umpan balik membawa glyph.
+ */
 @Composable
 fun QuizScreen(
     session: QuizSession,
@@ -49,165 +66,152 @@ fun QuizScreen(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (session.finished) {
+        QuizResult(session = session, onExit = onExit, modifier = modifier)
+        return
+    }
+
+    val q = session.question
+    val answered = session.lastCorrect != null
+    val progress = (session.current + if (answered) 1 else 0).toFloat() / session.total.toFloat()
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp),
+            .padding(DsDim.screenPadding),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header: tombol keluar + judul level + progress.
+        // HUD pelajaran: tutup di kiri, progres di tengah, skor di kanan.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             IconActionButton(
-                icon = BraillyIcons.Back,
+                icon = BraillyIcons.Close,
                 contentDescription = "Keluar kuis",
                 onClick = onExit,
             )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Level ${session.levelNumber}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "Skor ${session.score}/${session.total}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            DsProgressBar(progress = progress, modifier = Modifier.weight(1f))
+            DsHudChip(
+                icon = BraillyIcons.Trophy,
+                tint = Ds.colors.reward,
+                value = "${session.score}",
+                contentDescription = "Skor ${session.score} dari ${session.total}",
+            )
         }
 
-        if (session.finished) {
-            ResultCard(session = session, onExit = onExit)
-            return@Column
-        }
-
-        val progress = (session.current + if (session.lastCorrect != null) 1 else 0).toFloat() /
-            session.total.toFloat()
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp),
-        )
         Text(
-            "Soal ${session.current + 1} dari ${session.total}",
-            style = MaterialTheme.typography.labelMedium,
+            "Level ${session.levelNumber} \u00b7 Soal ${session.current + 1} dari ${session.total}",
+            style = Ds.text.meta,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        QuestionCard(session = session, onAnswer = onAnswer, onNext = onNext)
-    }
-}
+        Text(
+            instructionFor(q),
+            style = Ds.text.question,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
 
-@Composable
-private fun QuestionCard(
-    session: QuizSession,
-    onAnswer: (String) -> Unit,
-    onNext: () -> Unit,
-) {
-    val q = session.question
-    val answered = session.lastCorrect != null
+        PromptArea(q)
 
-    BraillyCard(
-        modifier = Modifier.fillMaxWidth(),
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Instruksi sesuai arah soal.
-            val instruction = when {
-                q.direction == QuizDirection.BRAILLE_TO_TEXT && q.format == QuizFormat.MULTIPLE_CHOICE ->
-                    "Teks apa yang ditunjukkan braille ini?"
-                q.direction == QuizDirection.BRAILLE_TO_TEXT ->
-                    "Tulis teks dari braille berikut"
-                q.format == QuizFormat.MULTIPLE_CHOICE ->
-                    "Braille mana yang benar untuk teks ini?"
-                else ->
-                    "Susun braille untuk teks berikut memakai papan ketik"
-            }
-            Text(
-                instruction,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-
-            // Prompt: tampilkan braille (B->T) atau teks (T->B).
-            PromptArea(q)
-
-            if (!answered) {
-                when (q.format) {
-                    QuizFormat.MULTIPLE_CHOICE -> MultipleChoice(q, onAnswer)
-                    QuizFormat.FILL_BLANK ->
-                        // Soal teks -> braille memakai papan ketik braille
-                        // (Perkins), bukan kotak teks biasa.
-                        if (q.direction == QuizDirection.TEXT_TO_BRAILLE) {
-                            BrailleInput(onAnswer)
-                        } else {
-                            FillBlank(onAnswer)
-                        }
+        when (q.format) {
+            QuizFormat.MULTIPLE_CHOICE -> MultipleChoice(session, onAnswer)
+            QuizFormat.FILL_BLANK ->
+                if (!answered) {
+                    // Soal teks -> braille memakai papan ketik braille
+                    // (Perkins), bukan kotak teks biasa.
+                    if (q.direction == QuizDirection.TEXT_TO_BRAILLE) {
+                        BrailleInput(onAnswer)
+                    } else {
+                        FillBlank(onAnswer)
+                    }
                 }
-            } else {
-                FeedbackArea(session, onNext)
-            }
         }
+
+        if (answered) {
+            FeedbackSheet(session = session, onNext = onNext)
+        }
+
+        Spacer(Modifier.height(8.dp))
     }
 }
 
+private fun instructionFor(q: QuizQuestion): String = when {
+    q.direction == QuizDirection.BRAILLE_TO_TEXT && q.format == QuizFormat.MULTIPLE_CHOICE ->
+        "Teks apa yang ditunjukkan braille ini?"
+    q.direction == QuizDirection.BRAILLE_TO_TEXT ->
+        "Tulis teks dari braille berikut"
+    q.format == QuizFormat.MULTIPLE_CHOICE ->
+        "Braille mana yang benar untuk teks ini?"
+    else ->
+        "Susun braille untuk teks berikut memakai papan ketik"
+}
+
+/** Panel soal: sel braille (B->T) atau teksnya (T->B). */
 @Composable
 private fun PromptArea(q: QuizQuestion) {
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (q.isBrailleShown) {
-            // Soal braille -> teks: tampilkan sel braille jawaban.
-            BrailleTextView(tokens = q.tokens)
-        } else {
-            // Soal teks -> braille: tampilkan teksnya.
-            Text(
-                q.answerText,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MultipleChoice(q: QuizQuestion, onAnswer: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        q.options.forEach { option ->
-            // Untuk soal T->B, pilihan ditampilkan sebagai braille; selainnya teks.
-            if (q.direction == QuizDirection.TEXT_TO_BRAILLE) {
-                BrailleOption(option = option, onClick = { onAnswer(option) })
+    DsSlabSurface(modifier = Modifier.fillMaxWidth(), contentPadding = 20.dp) {
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            if (q.isBrailleShown) {
+                BrailleTextView(tokens = q.tokens)
             } else {
-                PrimaryButton(
-                    text = option,
-                    onClick = { onAnswer(option) },
-                    modifier = Modifier.fillMaxWidth(),
+                Text(
+                    q.answerText,
+                    style = Ds.text.display,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
     }
 }
 
+/**
+ * Pilihan ganda sebagai tile slab.
+ *
+ * Pilihan tetap terlihat setelah dijawab, dengan tile yang benar ditandai hijau
+ * dan tile yang dipilih keliru ditandai merah sekaligus bergetar. Menyembunyikan
+ * pilihannya akan menghilangkan kesempatan pengguna membandingkan jawabannya
+ * dengan yang benar.
+ */
 @Composable
-private fun BrailleOption(option: String, onClick: () -> Unit) {
-    val translator = remember { com.brailly.friendly.core.braille.BrailleTranslator() }
-    val tokens = remember(option) { translator.textToBraille(option) }
-    BraillyCard(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.surface,
-    ) {
-        BrailleTextView(tokens = tokens, modifier = Modifier.fillMaxWidth())
+private fun MultipleChoice(session: QuizSession, onAnswer: (String) -> Unit) {
+    val q = session.question
+    val answered = session.lastCorrect != null
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        q.options.forEach { option ->
+            val state = when {
+                !answered -> DsTileState.Idle
+                option == q.answerText -> DsTileState.Correct
+                option == session.lastAnswer -> DsTileState.Wrong
+                else -> DsTileState.Idle
+            }
+            val label = when (state) {
+                DsTileState.Correct -> "Pilihan $option, jawaban benar"
+                DsTileState.Wrong -> "Pilihan $option, jawaban kamu keliru"
+                else -> "Pilihan $option"
+            }
+
+            DsAnswerTile(
+                state = state,
+                onTap = { if (!answered) onAnswer(option) },
+                modifier = Modifier.fillMaxWidth(),
+                contentDescription = label,
+            ) {
+                // Soal teks -> braille: pilihannya ditampilkan sebagai sel
+                // braille, sesuai dengan apa yang diminta soal.
+                if (q.direction == QuizDirection.TEXT_TO_BRAILLE) {
+                    val translator = remember { BrailleTranslator() }
+                    val tokens = remember(option) { translator.textToBraille(option) }
+                    BrailleTextView(tokens = tokens, modifier = Modifier.fillMaxWidth())
+                } else {
+                    Text(option, style = Ds.text.tile, color = dsTileTextColor(state))
+                }
+            }
+        }
     }
 }
 
@@ -215,12 +219,10 @@ private fun BrailleOption(option: String, onClick: () -> Unit) {
 private fun FillBlank(onAnswer: (String) -> Unit) {
     var text by remember { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
+        DsTextField(
             value = text,
             onValueChange = { text = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Ketik jawaban") },
-            shape = MaterialTheme.shapes.medium,
+            label = "Ketik jawaban",
             singleLine = true,
         )
         PrimaryButton(
@@ -256,15 +258,12 @@ private fun BrailleInput(onAnswer: (String) -> Unit) {
             }
             if (active.isNotEmpty()) add(BrailleToken.Cell(BrailleCell(active), '?'))
         }
-        BraillyCard(
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = MaterialTheme.colorScheme.surface,
-        ) {
+        DsSlabSurface(modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 if (previewTokens.isEmpty()) {
                     Text(
                         "Susun jawaban braille di sini",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = Ds.text.helper,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
@@ -339,96 +338,125 @@ private fun BrailleInput(onAnswer: (String) -> Unit) {
 }
 
 @Composable
-private fun FeedbackArea(session: QuizSession, onNext: () -> Unit) {
+private fun FeedbackSheet(session: QuizSession, onNext: () -> Unit) {
     val correct = session.lastCorrect == true
     val q = session.question
     // Untuk soal teks -> braille, jawaban benar ditampilkan sebagai sel braille,
     // bukan huruf biasa, agar sesuai dengan apa yang diminta pada soal.
     val showBrailleAnswer = !correct && q.direction == QuizDirection.TEXT_TO_BRAILLE
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                if (correct) BraillyIcons.Check else BraillyIcons.Close,
-                contentDescription = null,
-                tint = if (correct) SuccessGreen else ErrorRed,
-                modifier = Modifier.size(24.dp),
-            )
-            Spacer(Modifier.size(8.dp))
-            Text(
-                when {
-                    correct -> "Benar!"
-                    showBrailleAnswer -> "Kurang tepat. Jawaban yang benar:"
-                    else -> "Kurang tepat. Jawaban: ${q.answerText}"
-                },
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-        if (showBrailleAnswer) {
-            BraillyCard(
-                modifier = Modifier.fillMaxWidth(),
-                containerColor = MaterialTheme.colorScheme.surface,
-            ) {
+    val isLast = session.current + 1 >= session.total
+
+    DsFeedbackSheet(
+        correct = correct,
+        title = if (correct) "Benar!" else "Kurang tepat",
+        glyph = if (correct) BraillyIcons.Check else BraillyIcons.Close,
+        modifier = Modifier.fillMaxWidth(),
+        detail = if (correct) {
+            null
+        } else {
+            {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BrailleTextView(tokens = q.tokens, modifier = Modifier.fillMaxWidth())
                     Text(
-                        "(${q.answerText})",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        if (showBrailleAnswer) "Jawaban yang benar:" else "Jawaban: ${q.answerText}",
+                        style = Ds.text.body,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
+                    if (showBrailleAnswer) {
+                        DsSlabSurface(modifier = Modifier.fillMaxWidth()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                BrailleTextView(
+                                    tokens = q.tokens,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Text(
+                                    "(${q.answerText})",
+                                    style = Ds.text.meta,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                 }
             }
-        }
-        val isLast = session.current + 1 >= session.total
-        PrimaryButton(
-            text = if (isLast) "Lihat Hasil" else "Soal Berikutnya",
+        },
+    ) {
+        DsButton(
+            title = if (isLast) "Lihat Hasil" else "Soal Berikutnya",
             onClick = onNext,
             modifier = Modifier.fillMaxWidth(),
+            variant = if (correct) DsButtonVariant.Primary else DsButtonVariant.Destructive,
         )
     }
 }
 
+/**
+ * Layar hasil level.
+ *
+ * Saat lulus, kanvasnya berganti menjadi warna primer dengan konfeti, mengikuti
+ * pola perayaan akhir pelajaran. Saat belum lulus, kanvasnya tetap netral:
+ * perayaan untuk hasil yang gagal akan terasa seperti olok-olok.
+ */
 @Composable
-private fun ResultCard(session: QuizSession, onExit: () -> Unit) {
+private fun QuizResult(
+    session: QuizSession,
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val c = Ds.colors
     val passed = session.score >= LearnViewModel.PASS_THRESHOLD
-    BraillyCard(
-        modifier = Modifier.fillMaxWidth(),
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-    ) {
+    val animate = dsAnimationsEnabled()
+
+    val canvas = if (passed) cs.primary else cs.background
+    val onCanvas = if (passed) cs.onPrimary else cs.onBackground
+
+    Box(modifier.fillMaxSize().background(canvas)) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(DsDim.screenPadding)
+                .padding(top = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(DsDim.sectionGap),
         ) {
             Icon(
                 BraillyIcons.Trophy,
                 contentDescription = null,
-                tint = if (passed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(56.dp),
+                tint = if (passed) c.reward else cs.onSurfaceVariant,
+                modifier = Modifier.size(96.dp),
             )
             Text(
                 if (passed) "Level Selesai!" else "Coba Lagi",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                "Skor kamu ${session.score} dari ${session.total}",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Text(
-                if (passed) "Level berikutnya terbuka."
-                else "Butuh minimal ${LearnViewModel.PASS_THRESHOLD} benar untuk membuka level berikutnya.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                style = Ds.text.screenTitle,
+                color = onCanvas,
                 textAlign = TextAlign.Center,
             )
-            PrimaryButton(
-                text = "Kembali ke Jalur",
+            Text(
+                "${session.score}/${session.total}",
+                style = Ds.text.heroNumber,
+                color = onCanvas,
+            )
+            Text(
+                if (passed) {
+                    "Level berikutnya terbuka."
+                } else {
+                    "Butuh minimal ${LearnViewModel.PASS_THRESHOLD} benar " +
+                        "untuk membuka level berikutnya."
+                },
+                style = Ds.text.body,
+                color = onCanvas,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            DsButton(
+                title = "Kembali ke Jalur",
                 onClick = onExit,
                 modifier = Modifier.fillMaxWidth(),
+                // Di atas kanvas primer, tombol primer akan lesap ke latarnya.
+                variant = if (passed) DsButtonVariant.Neutral else DsButtonVariant.Primary,
             )
         }
+        if (passed && animate) DsConfetti()
     }
 }

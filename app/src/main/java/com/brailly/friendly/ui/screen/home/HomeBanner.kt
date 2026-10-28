@@ -21,6 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
@@ -31,6 +34,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.brailly.friendly.ui.component.BraillyIcons
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsDim
 
 /**
  * Satu item banner beranda. Mengarah ke sebuah video YouTube.
@@ -101,11 +106,24 @@ private fun BannerCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(DsDim.radiusCard)
+    val ledgeColor = Ds.colors.neutralLedge
     Box(
         modifier = modifier
             .fillMaxWidth()
+            // Ledge dan border 2dp agar banner memakai bahasa bentuk yang sama
+            // dengan kartu lain, meski isinya gambar dari jaringan.
+            .padding(bottom = DsDim.ledge)
             .aspectRatio(16f / 9f)
-            .clip(RoundedCornerShape(16.dp))
+            .drawBehind {
+                drawRoundRect(
+                    color = ledgeColor,
+                    topLeft = Offset(0f, DsDim.ledge.toPx()),
+                    size = size,
+                    cornerRadius = CornerRadius(DsDim.radiusCard.toPx()),
+                )
+            }
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick)
             .semantics {
@@ -130,6 +148,9 @@ private fun BannerCard(
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
+                // Hitam dan putih tetap dipakai di sini: lencana ini duduk di
+                // atas thumbnail sembarang, dan warna tema tidak menjamin
+                // keterbacaan di atas gambar yang tidak bisa diduga.
                 .background(Color.Black.copy(alpha = 0.45f)),
             contentAlignment = Alignment.Center,
         ) {

@@ -31,6 +31,8 @@ import com.brailly.friendly.ui.component.BraillyCard
 import com.brailly.friendly.ui.component.BraillyIcons
 import com.brailly.friendly.ui.component.ScreenHeader
 import com.brailly.friendly.ui.component.SecondaryButton
+import com.brailly.friendly.ui.designsystem.Ds
+import com.brailly.friendly.ui.designsystem.DsDim
 import org.koin.compose.koinInject
 
 @Composable
@@ -43,7 +45,7 @@ fun ProfileScreen(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
+            .padding(DsDim.screenPadding),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenHeader(title = "Profil", subtitle = "Pengaturan & statistik")
@@ -62,8 +64,8 @@ fun ProfileScreen(
                 )
                 Spacer(Modifier.size(16.dp))
                 Column {
-                    Text("Pengguna Brailly", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
-                    Text("Pelajar Braille", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Pengguna Brailly", style = Ds.text.sectionHeader, color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Pelajar Braille", style = Ds.text.helper, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -74,7 +76,7 @@ fun ProfileScreen(
             StatCard(Modifier.weight(1f), BraillyIcons.Trophy, "12", "Huruf dikuasai")
         }
 
-        Text("Pengaturan", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+        Text("Pengaturan", style = Ds.text.sectionHeader, color = MaterialTheme.colorScheme.onBackground)
 
         // Toggle tema
         BraillyCard(modifier = Modifier.fillMaxWidth()) {
@@ -92,10 +94,10 @@ fun ProfileScreen(
                     )
                     Spacer(Modifier.size(12.dp))
                     Column {
-                        Text("Mode Gelap", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Mode Gelap", style = Ds.text.skillLabel, color = MaterialTheme.colorScheme.onSurface)
                         Text(
                             if (darkTheme) "Aktif" else "Nonaktif",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = Ds.text.helper,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -143,7 +145,7 @@ private fun SpeechRateSetting() {
                 Column {
                     Text(
                         "Kecepatan Suara",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = Ds.text.skillLabel,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
@@ -157,7 +159,7 @@ private fun SpeechRateSetting() {
                                     "memakai bahasa bawaan"
                             else -> "Dipakai saat membacakan hasil scan dan riwayat"
                         },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = Ds.text.helper,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -206,8 +208,8 @@ private fun StatCard(modifier: Modifier, icon: ImageVector, value: String, label
     BraillyCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(24.dp))
-            Text(value, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-            Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = Ds.text.heroNumber, color = MaterialTheme.colorScheme.onSurface)
+            Text(label, style = Ds.text.meta, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -223,9 +225,9 @@ private fun SettingItem(icon: ImageVector, title: String, value: String) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(Modifier.size(12.dp))
-                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(title, style = Ds.text.skillLabel, color = MaterialTheme.colorScheme.onSurface)
             }
-            Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = Ds.text.helper, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
